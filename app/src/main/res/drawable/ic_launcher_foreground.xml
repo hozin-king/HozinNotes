@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Ikon catatan: lembar note dengan garis teks -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,26 h32 c2.8,0 5,2.2 5,5 v46 c0,2.8 -2.2,5 -5,5 H38 c-2.8,0 -5,-2.2 -5,-5 V31 c0,-2.8 2.2,-5 5,-5 z" />
+    <path
+        android:fillColor="#4A6CF7"
+        android:pathData="M41,40 h26 v4 H41 z M41,48 h26 v4 H41 z M41,56 h18 v4 H41 z" />
+    <path
+        android:fillColor="#2DD4BF"
+        android:pathData="M70,64 l6,6 -12,3 3,-12 z" />
+</vector>

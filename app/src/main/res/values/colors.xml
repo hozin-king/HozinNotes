@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand -->
+    <color name="brand_primary">#4A6CF7</color>
+    <color name="brand_primary_dark">#3A56C9</color>
+    <color name="brand_accent">#2DD4BF</color>
+
+    <!-- Light theme surfaces -->
+    <color name="bg_light">#F5F6FA</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="glass_light">#B3FFFFFF</color>
+    <color name="text_primary_light">#151A2B</color>
+    <color name="text_secondary_light">#6B7280</color>
+    <color name="divider_light">#E5E7EF</color>
+
+    <!-- Dark theme surfaces -->
+    <color name="bg_dark">#0D1120</color>
+    <color name="surface_dark">#161B2E</color>
+    <color name="glass_dark">#B3161B2E</color>
+    <color name="text_primary_dark">#F1F4FB</color>
+    <color name="text_secondary_dark">#98A1B5</color>
+    <color name="divider_dark">#232A42</color>
+
+    <!-- Note colors -->
+    <color name="note_yellow">#FFE58A</color>
+    <color name="note_green">#B8E6B8</color>
+    <color name="note_blue">#BFD9FF</color>
+    <color name="note_pink">#FFC9DD</color>
+    <color name="note_purple">#D9C6FF</color>
+    <color name="note_none">#00000000</color>
+
+    <!-- Semantic -->
+    <color name="danger">#FF5A5A</color>
+    <color name="warning">#FFB020</color>
+    <color name="success">#34C77B</color>
+    <color name="scrim">#66000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

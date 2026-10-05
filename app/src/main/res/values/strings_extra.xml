@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- String tambahan Hozin Notes (di luar strings.xml utama). -->
+<resources>
+    <!-- Vault -->
+    <string name="vault_pin_length">PIN harus 6 digit</string>
+    <string name="vault_use_biometric">Sidik jari</string>
+    <string name="vault_new_title">Catatan privat baru</string>
+    <string name="vault_new_content">Isi catatan</string>
+    <string name="vault_title_required">Judul tidak boleh kosong</string>
+    <string name="vault_view">Lihat isi</string>
+    <string name="vault_delete_confirm">Hapus catatan ini secara permanen?</string>
+
+    <!-- Settings -->
+    <string name="settings_display">Tampilan</string>
+    <string name="settings_theme">Tema</string>
+    <string name="theme_light">Terang</string>
+    <string name="theme_dark">Gelap</string>
+    <string name="theme_system">Ikuti sistem</string>
+    <string name="settings_lock">Kunci aplikasi</string>
+    <string name="settings_lock_desc">Minta PIN / sidik jari setiap aplikasi dibuka</string>
+    <string name="lock_pin_cancelled">Pembuatan PIN dibatalkan — kunci aplikasi tidak aktif</string>
+    <string name="settings_backup_local">Backup lokal</string>
+    <string name="backup_export">Ekspor ke file ZIP</string>
+    <string name="backup_import">Impor dari ZIP</string>
+    <string name="backup_exporting">Mengekspor…</string>
+    <string name="backup_export_ok">Backup tersimpan</string>
+    <string name="backup_export_fail">Gagal mengekspor backup</string>
+    <string name="backup_import_mode">Pilih mode impor</string>
+    <string name="backup_merge">Gabung</string>
+    <string name="backup_overwrite">Timpa (hapus semua dulu)</string>
+    <string name="backup_overwrite_confirm">Semua catatan akan dihapus dan diganti dari file ZIP. Lanjut?</string>
+    <string name="backup_import_ok">Impor selesai: %1$d catatan, %2$d gambar</string>
+    <string name="backup_import_fail">Gagal mengimpor backup</string>
+    <string name="backup_includes_vault">Backup mencakup ruang privat — tetap terenkripsi.</string>
+    <string name="backup_vault_replace_warn">Restore akan MENGGANTI seluruh isi ruang privat dengan data dari backup ini (hanya bisa dipulihkan di perangkat ini). Catatan biasa bisa digabung atau ditimpa sesuai pilihan berikutnya. Lanjut?</string>
+    <string name="settings_backup_drive">Backup Google Drive</string>
+    <string name="drive_login">Login Google</string>
+    <string name="drive_logged_in">Masuk sebagai %1$s</string>
+    <string name="drive_logged_out">Belum login Google</string>
+    <string name="drive_unavailable">Drive tidak tersedia</string>
+    <string name="drive_login_first">Hubungkan akun Google dulu di bawah untuk backup Drive</string>
+    <string name="drive_signin_title">Login Google gagal</string>
+    <string name="drive_signin_failed">Login Google gagal. Coba lagi.</string>
+    <string name="drive_signin_error10">Aplikasi belum didaftarkan di Google Cloud Console (error 10).\n\nIni BUKAN bug aplikasi — Google mewajibkan pendaftaran:\n1. Buka console.cloud.google.com\n2. Buat project → aktifkan Google Drive API\n3. Buat OAuth client ID (Android) dengan package com.hozinking.notes dan SHA-1 dari log build GitHub\n\nPanduan lengkap: GOOGLE_DRIVE_SETUP.md</string>
+    <string name="drive_signin_error7">Koneksi bermasalah (error 7). Periksa internet lalu coba lagi.</string>
+    <string name="drive_signin_error_other">Login Google gagal (kode %1$d). Coba lagi nanti.</string>
+    <string name="backup_started">Backup dimulai di latar belakang…</string>
+    <string name="backup_schedule">Jadwal backup otomatis</string>
+    <string name="schedule_off">Mati</string>
+    <string name="schedule_daily">Tiap 1 hari</string>
+    <string name="schedule_weekly">Tiap 7 hari</string>
+    <string name="schedule_custom">Custom…</string>
+    <string name="schedule_days_hint">Jumlah hari</string>
+    <string name="schedule_every_days">Tiap %1$d hari</string>
+    <string name="backup_wifi_only">Hanya WiFi</string>
+    <string name="settings_about">Tentang</string>
+    <string name="settings_chat">Chat</string>
+    <string name="chat_worker_url_label">URL Worker (Cloudflare)</string>
+    <string name="chat_worker_url_hint">https://hozin-chat.…workers.dev</string>
+    <string name="chat_worker_url_invalid">URL harus diawali http:// atau https://</string>
+    <string name="chat_worker_url_saved">URL Worker disimpan</string>
+    <string name="chat_worker_url_cleared">URL Worker dikosongkan (pakai bawaan)</string>
+    <string name="about_version">Hozin Notes versi %1$s</string>
+
+    <!-- Cadangan Drive -->
+    <string name="drive_backups">Lihat cadangan Drive</string>
+    <string name="drive_backups_title">Cadangan Drive</string>
+    <string name="drive_backups_loading">Memuat cadangan…</string>
+    <string name="drive_backups_empty">Belum ada cadangan di Drive.\nPakai tombol "Cadangkan sekarang" dulu.</string>
+    <string name="drive_backups_error">Gagal memuat cadangan: %1$s</string>
+    <string name="drive_backups_retry">Coba lagi</string>
+    <string name="drive_restore">Pulihkan</string>
+    <string name="drive_restore_title">Pulihkan cadangan?</string>
+    <string name="drive_restore_confirm">Catatan saat ini akan DIGANTI dengan cadangan ini. Backup dulu kalau perlu. Lanjut?</string>
+    <string name="drive_downloading">Mengunduh cadangan…</string>
+    <string name="drive_restore_ok">Cadangan dipulihkan: %1$d catatan, %2$d gambar</string>
+    <string name="drive_restore_fail">Gagal memulihkan cadangan</string>
+
+    <!-- Update checker -->
+    <string name="update_check">Cek pembaruan</string>
+    <string name="update_none">Sudah versi terbaru.</string>
+
+    <!-- Profil Google & kuota Drive -->
+    <string name="drive_profile_photo_cd">Foto profil Google</string>
+    <string name="drive_quota">%1$s dari %2$s terpakai</string>
+    <string name="drive_quota_used">%1$s terpakai</string>
+    <string name="drive_preparing">Menyiapkan cadangan…</string>
+    <string name="drive_uploading">Mengunggah %1$s…</string>
+    <string name="backup_ok">Cadangan Drive selesai</string>
+
+    <!-- Format teks -->
+    <string name="fmt_bold">Tebal</string>
+    <string name="fmt_italic">Miring</string>
+    <string name="fmt_strike">Coret</string>
+    <string name="fmt_highlight">Stabilo</string>
+
+    <!-- Tabel -->
+    <string name="table_insert">Sisipkan tabel</string>
+    <string name="table_insert_ok">Sisipkan</string>
+    <string name="table_rows">Jumlah baris</string>
+    <string name="table_cols">Jumlah kolom</string>
+    <string name="table_edit_title">Edit tabel</string>
+    <string name="table_add_row">+ Baris</string>
+    <string name="table_add_col">+ Kolom</string>
+    <string name="table_delete">Hapus tabel</string>
+
+    <!-- Kunci catatan -->
+    <string name="note_lock">Kunci catatan</string>
+    <string name="note_unlock">Buka kunci</string>
+    <string name="note_locked">Catatan dikunci</string>
+    <string name="note_unlocked">Kunci dibuka</string>
+    <string name="lock_pin_title">Masukkan PIN</string>
+    <string name="lock_pin_hint">PIN Ruang Privat</string>
+    <string name="lock_pin_wrong">PIN salah</string>
+    <string name="lock_need_pin">Buat PIN dulu: buka Ruang Privat (ikon gembok) lalu atur PIN.</string>
+    <string name="lock_open">Buka</string>
+
+    <!-- Filter tag -->
+    <string name="tag_filter">Filter tag</string>
+    <string name="tag_all">Semua catatan</string>
+    <string name="tag_filter_active">#%1$s  ✕</string>
+    <string name="update_check_fail">Gagal memeriksa pembaruan. Periksa koneksi.</string>
+    <string name="update_available_title">Versi baru tersedia</string>
+    <string name="update_available_msg">Hozin Notes %1$s tersedia.\n\n%2$s</string>
+    <string name="update_download">Download</string>
+    <string name="update_later">Nanti</string>
+
+    <!-- Mindmap -->
+    <string name="mindmap_root">Semua Catatan</string>
+    <string name="mindmap_branch_folders">Folder</string>
+    <string name="mindmap_branch_tags">Tag</string>
+    <string name="mindmap_empty">Belum ada folder atau tag</string>
+    <string name="mindmap_folder_info">Kelola catatan folder ini lewat tab Folder.</string>
+    <string name="mindmap_tag_info">Kelola label ini lewat pengaturan catatan.</string>
+
+    <!-- Chat -->
+    <string name="chat_name_desc">Chat acak dengan orang asing.\nCukup isi nama tampilan — tanpa password.</string>
+    <string name="chat_name_hint">Nama tampilan</string>
+    <string name="chat_name_empty">Isi nama tampilan dulu</string>
+    <string name="chat_start">Mulai</string>
+    <string name="chat_login_google">Masuk dengan Google</string>
+    <string name="chat_login_fail">Gagal masuk: %1$s</string>
+    <string name="chat_register_fail">Gagal mendaftar: %1$s</string>
+    <string name="chat_fill_email_password">Isi email dan kata sandi dulu</string>
+    <string name="chat_find_friend">Cari teman acak</string>
+    <string name="chat_searching">Mencari teman…</string>
+    <string name="chat_match_found">Teman ditemukan! Menghubungkan…</string>
+    <string name="chat_match_timeout">Belum ada teman, coba lagi</string>
+    <string name="chat_match_fail">Gagal mencari teman</string>
+    <string name="chat_input_hint">Tulis pesan…</string>
+    <string name="chat_send">Kirim</string>
+    <string name="chat_report">Laporkan</string>
+    <string name="chat_block">Blokir</string>
+    <string name="chat_reported">Terima kasih, laporan dikirim</string>
+    <string name="chat_blocked">Pengguna diblokir</string>
+    <string name="chat_stranger">Teman acak</string>
+</resources>

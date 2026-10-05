@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Satu baris item pada action sheet iOS. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sheet_label"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:gravity="center"
+    android:minHeight="52dp"
+    android:padding="16dp"
+    android:textColor="@color/brand_primary"
+    android:textSize="17sp" />

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Override malam: permukaan gelap agar ?attr/colorSurface dkk. adaptif. -->
+<resources>
+    <style name="Theme.HozinNotes" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorPrimaryContainer">@color/brand_accent</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <item name="colorSurface">@color/surface_dark</item>
+    </style>
+
+    <style name="Theme.HozinNotes.Glossy" parent="Theme.HozinNotes">
+        <item name="android:windowBackground">@color/bg_dark</item>
+    </style>
+
+    <style name="Theme.HozinNotes.Dialog" parent="Theme.Material3.DayNight.Dialog">
+        <item name="colorPrimary">@color/brand_primary</item>
+    </style>
+</resources>

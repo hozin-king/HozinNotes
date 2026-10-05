@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Editor toolbar -->
+    <string name="notes_add_item">+ Item</string>
+    <string name="notes_toggle_check">Centang</string>
+    <string name="notes_gallery">Galeri</string>
+    <string name="notes_camera">Kamera</string>
+    <string name="notes_menu_more">⋯</string>
+    <string name="editor_undo">Urungkan</string>
+    <string name="editor_redo">Ulangi</string>
+
+    <!-- Content descriptions -->
+    <string name="notes_search_cd">Cari</string>
+    <string name="notes_search_hint">Cari catatan</string>
+    <string name="notes_view_toggle_cd">Ganti tampilan grid/daftar</string>
+    <string name="notes_sort_title">Urutkan</string>
+    <string name="notes_sort_newest">Terbaru dulu</string>
+    <string name="notes_sort_oldest">Terlama dulu</string>
+    <string name="notes_sort_title_az">Judul A-Z</string>
+    <string name="notes_sort_color">Warna</string>
+    <string name="notes_vault_cd">Ruang privat</string>
+    <string name="notes_more_cd">Menu lainnya</string>
+
+    <!-- Misc -->
+    <string name="notes_no_title">(Tanpa judul)</string>
+    <string name="notes_all">Semua</string>
+    <string name="notes_no_folder">Tanpa folder</string>
+    <string name="notes_add_folder">+ Folder</string>
+    <string name="notes_folder_name_hint">Nama folder</string>
+    <string name="notes_folder_title">Folder</string>
+    <string name="notes_delete_folder_title">Hapus folder?</string>
+    <string name="notes_delete_folder_msg">Catatan di dalamnya tidak ikut terhapus.</string>
+
+    <!-- Colors -->
+    <string name="notes_color_title">Warna catatan</string>
+    <string name="notes_color_none">Tanpa warna</string>
+    <string name="notes_color_yellow">Kuning</string>
+    <string name="notes_color_green">Hijau</string>
+    <string name="notes_color_blue">Biru</string>
+    <string name="notes_color_pink">Pink</string>
+    <string name="notes_color_purple">Ungu</string>
+
+    <!-- Tags -->
+    <string name="notes_tags_title">Tag</string>
+    <string name="notes_tags_hint">Tambah tag, pisahkan dengan koma</string>
+
+    <!-- Delete confirmations -->
+    <string name="notes_delete_title">Hapus catatan?</string>
+    <string name="notes_delete_msg">Catatan akan dipindah ke sampah.</string>
+    <string name="notes_delete_forever_title">Hapus permanen?</string>
+    <string name="notes_delete_forever_msg">Catatan dihapus selamanya dan tidak bisa dikembalikan.</string>
+    <string name="notes_remove_image">Hapus gambar ini?</string>
+
+    <!-- Trash -->
+    <string name="notes_purge_title">Hapus catatan lama?</string>
+    <string name="notes_purge_msg">Semua catatan di sampah yang berumur lebih dari 30 hari akan dihapus permanen.</string>
+    <string name="notes_purged">%1$d catatan lama dihapus</string>
+    <string name="notes_trash_empty">Sampah kosong.</string>
+    <string name="notes_archive_empty">Arsip kosong.</string>
+
+    <!-- Search -->
+    <string name="notes_search_empty_hint">Ketik untuk mencari di semua catatan.</string>
+
+    <!-- Reminder -->
+    <string name="reminder_set">Ingatkan saya</string>
+    <string name="reminder_cancel">Batalkan pengingat</string>
+    <string name="reminder_title">Pengingat</string>
+    <string name="reminder_need_save">Tulis dulu catatannya sebelum pasang pengingat.</string>
+    <string name="reminder_existing">Pengingat aktif: %1$s.\nBatalkan?</string>
+    <string name="reminder_past">Pilih waktu di masa depan.</string>
+    <string name="reminder_set_ok">Pengingat dipasang: %1$s</string>
+    <string name="reminder_exact_denied">Izin alarm tepat waktu ditolak — pengingat mungkin tidak tepat waktu. Aktifkan di Pengaturan HP bila perlu.</string>
+    <string name="reminder_channel_name">Pengingat</string>
+    <string name="reminder_channel_desc">Notifikasi pengingat catatan</string>
+</resources>

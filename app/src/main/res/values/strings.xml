@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Hozin Notes</string>
+
+    <!-- Common actions -->
+    <string name="ok">OK</string>
+    <string name="cancel">Batal</string>
+    <string name="save">Simpan</string>
+    <string name="delete">Hapus</string>
+    <string name="edit">Ubah</string>
+    <string name="share">Bagikan</string>
+    <string name="close">Tutup</string>
+    <string name="retry">Coba lagi</string>
+    <string name="yes">Ya</string>
+    <string name="no">Tidak</string>
+
+    <!-- Tabs -->
+    <string name="tab_notes">Catatan</string>
+    <string name="tab_folders">Folder</string>
+    <string name="tab_mindmap">Mindmap</string>
+    <string name="tab_chat">Chat</string>
+    <string name="tab_settings">Pengaturan</string>
+
+    <!-- Notes -->
+    <string name="new_note">Catatan baru</string>
+    <string name="archive_title">Arsip</string>
+    <string name="trash_title">Sampah</string>
+    <string name="note_title_hint">Judul</string>
+    <string name="note_content_hint">Tulis catatan di sini…</string>
+    <string name="search_hint">Cari catatan…</string>
+    <string name="empty_notes">Belum ada catatan.\nKetuk + untuk membuat yang pertama.</string>
+    <string name="deleted_undo">Catatan dihapus</string>
+    <string name="undo">Urungkan</string>
+    <string name="archive">Arsipkan</string>
+    <string name="unarchive">Keluarkan dari arsip</string>
+    <string name="move_to_trash">Pindahkan ke sampah</string>
+    <string name="restore">Pulihkan</string>
+    <string name="delete_forever">Hapus permanen</string>
+    <string name="pin">Sematkan</string>
+    <string name="unpin">Lepas sematan</string>
+
+    <!-- Vault -->
+    <string name="vault">Ruang Privat</string>
+    <string name="vault_locked">Terkunci — verifikasi untuk membuka</string>
+    <string name="vault_set_pin">Buat PIN 6 digit</string>
+    <string name="vault_confirm_pin">Konfirmasi PIN</string>
+    <string name="vault_pin_mismatch">PIN tidak sama, coba lagi</string>
+    <string name="vault_wrong_pin">PIN salah</string>
+
+    <!-- Backup -->
+    <string name="backup_now">Cadangkan sekarang</string>
+    <string name="backup_restoring">Memulihkan…</string>
+
+    <!-- Chat -->
+    <string name="chat_unavailable_title">Chat belum aktif</string>
+    <string name="chat_unavailable_msg">Fitur chat butuh file google-services.json dari Firebase.\nCatatan tetap berfungsi penuh tanpa itu.\nLihat FIREBASE_SETUP.md untuk panduan.</string>
+</resources>
