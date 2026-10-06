@@ -72,4 +72,11 @@
     <string name="reminder_exact_denied">Izin alarm tepat waktu ditolak — pengingat mungkin tidak tepat waktu. Aktifkan di Pengaturan HP bila perlu.</string>
     <string name="reminder_channel_name">Pengingat</string>
     <string name="reminder_channel_desc">Notifikasi pengingat catatan</string>
+
+    <!-- Bagikan & duplikat -->
+    <string name="duplicate">Duplikat</string>
+    <string name="note_duplicated">Catatan diduplikat</string>
+    <string name="duplicate_need_save">Simpan dulu catatannya sebelum diduplikat.</string>
+    <string name="duplicate_failed">Gagal menduplikat catatan</string>
+    <string name="archived_undo">Catatan diarsipkan</string>
 </resources>

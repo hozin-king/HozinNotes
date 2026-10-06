@@ -5,10 +5,12 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -113,6 +115,8 @@ public class NoteListFragment extends Fragment {
             }
             vaultLauncher.launch(i);
         });
+        v.findViewById(R.id.btn_passwords).setOnClickListener(x ->
+                startActivity(new Intent(requireContext(), PasswordVaultActivity.class)));
         v.findViewById(R.id.btn_more).setOnClickListener(x ->
                 new IosActionSheet(requireContext())
                         .addItem(getString(R.string.archive_title), () ->
@@ -125,7 +129,9 @@ public class NoteListFragment extends Fragment {
         FloatingActionButton fab = v.findViewById(R.id.fab);
         fab.setOnClickListener(x -> openEditor(-1));
 
-        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0, ItemTouchHelper.RIGHT) {
+        // Geser kanan = hapus (ke sampah), geser kiri = arsipkan. Keduanya bisa di-undo.
+        new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0,
+                ItemTouchHelper.LEFT | ItemTouchHelper.RIGHT) {
             @Override
             public boolean onMove(@NonNull RecyclerView rv,
                                   @NonNull RecyclerView.ViewHolder vh,
@@ -138,6 +144,10 @@ public class NoteListFragment extends Fragment {
                 NoteEntity n = adapter.peek(vh.getBindingAdapterPosition());
                 if (n == null) {
                     adapter.refresh();
+                    return;
+                }
+                if (direction == ItemTouchHelper.LEFT) {
+                    archiveWithUndo(n);
                     return;
                 }
                 NoteRepository.get(requireContext()).trashNote(n.id, r ->
@@ -292,6 +302,55 @@ public class NoteListFragment extends Fragment {
         NoteRepository.get(requireContext()).updateNote(n, v -> main.post(adapter::refresh));
     }
 
+    /** Arsipkan via swipe kiri, dengan opsi urungkan. */
+    private void archiveWithUndo(NoteEntity n) {
+        n.archived = true;
+        persist(n);
+        Snackbar.make(recycler, R.string.archived_undo, Snackbar.LENGTH_LONG)
+                .setAction(R.string.undo, a -> {
+                    n.archived = false;
+                    persist(n);
+                })
+                .show();
+    }
+
+    /** Bagikan catatan dari daftar: ambil isi penuh dulu (list hanya bawa 180 karakter). */
+    private void shareNoteFull(NoteEntity n) {
+        NoteRepository.get(requireContext()).getNote(n.id, full -> main.post(() -> {
+            if (full == null) return;
+            String title = (full.title == null || full.title.trim().isEmpty())
+                    ? getString(R.string.notes_no_title) : full.title.trim();
+            String body = full.content == null ? "" : full.content;
+            if (full.contentHtml) {
+                body = Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY).toString();
+            }
+            body = body.trim();
+            String text = body.isEmpty() ? title : title + "\n\n" + body;
+            Intent i = new Intent(Intent.ACTION_SEND);
+            i.setType("text/plain");
+            i.putExtra(Intent.EXTRA_SUBJECT, title);
+            i.putExtra(Intent.EXTRA_TEXT, text);
+            try {
+                startActivity(Intent.createChooser(i, getString(R.string.share)));
+            } catch (Exception ignored) {
+            }
+        }));
+    }
+
+    /** Duplikat catatan dari daftar (teks + tag + warna + folder). */
+    private void duplicateNote(NoteEntity n) {
+        NoteRepository.get(requireContext()).duplicateNote(n.id, id -> main.post(() -> {
+            if (id != null && id > 0) {
+                Toast.makeText(requireContext(),
+                        R.string.note_duplicated, Toast.LENGTH_SHORT).show();
+                adapter.refresh();
+            } else {
+                Toast.makeText(requireContext(),
+                        R.string.duplicate_failed, Toast.LENGTH_SHORT).show();
+            }
+        }));
+    }
+
     private void showActions(NoteEntity n) {
         String title = (n.title == null || n.title.trim().isEmpty())
                 ? getString(R.string.notes_no_title) : n.title.trim();
@@ -301,6 +360,8 @@ public class NoteListFragment extends Fragment {
                         () -> { n.pinned = !n.pinned; persist(n); })
                 .addItem(getString(R.string.archive),
                         () -> { n.archived = true; persist(n); })
+                .addItem(getString(R.string.share), () -> shareNoteFull(n))
+                .addItem(getString(R.string.duplicate), () -> duplicateNote(n))
                 .addItem(getString(R.string.notes_color_title), () -> showColorSheet(n))
                 .addDestructive(getString(R.string.delete), () -> confirmDelete(n))
                 .show();

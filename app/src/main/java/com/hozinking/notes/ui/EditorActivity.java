@@ -1,6 +1,7 @@
 package com.hozinking.notes.ui;
 
 import android.app.AlertDialog;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
@@ -895,6 +896,8 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.notes_folder_title), this::showFolderSheet)
                 .addItem(getString(R.string.notes_tags_title), this::showTagsDialog)
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
+                .addItem(getString(R.string.share), this::shareNote)
+                .addItem(getString(R.string.duplicate), this::duplicateNote)
                 .addItem(getString(note.locked ? R.string.note_unlock : R.string.note_lock),
                         this::toggleNoteLock)
                 .addItem(reminderLabel, this::showReminderDialog)
@@ -909,6 +912,50 @@ public class EditorActivity extends AppCompatActivity {
                 })
                 .addDestructive(getString(R.string.delete), this::confirmDelete)
                 .show();
+    }
+
+    // ---------- Bagikan & duplikat ----------
+
+    /** Bagikan judul + isi catatan sebagai teks polos ke aplikasi lain. */
+    private void shareNote() {
+        if (note == null) return;
+        saveNow(); // sinkronkan field dulu (syncFieldsToNote jalan sinkron)
+        String title = displayTitle();
+        String body = note.content == null ? "" : note.content;
+        if (note.contentHtml) {
+            body = Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY).toString();
+        }
+        body = body.trim();
+        String text = body.isEmpty() ? title : title + "\n\n" + body;
+        Intent i = new Intent(Intent.ACTION_SEND);
+        i.setType("text/plain");
+        i.putExtra(Intent.EXTRA_SUBJECT, title);
+        i.putExtra(Intent.EXTRA_TEXT, text);
+        try {
+            startActivity(Intent.createChooser(i, getString(R.string.share)));
+        } catch (Exception e) {
+            Toast.makeText(this, R.string.share, Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /** Duplikat catatan ini (teks + tag + warna + folder). */
+    private void duplicateNote() {
+        if (note == null) return;
+        if (noteId == -1) {
+            saveNow();
+        }
+        if (noteId == -1) {
+            Toast.makeText(this, R.string.duplicate_need_save, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final long srcId = noteId;
+        NoteRepository.get(this).duplicateNote(srcId, id -> main.post(() -> {
+            if (id != null && id > 0) {
+                Toast.makeText(this, R.string.note_duplicated, Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, R.string.duplicate_failed, Toast.LENGTH_SHORT).show();
+            }
+        }));
     }
 
     // ---------- Pengingat ----------

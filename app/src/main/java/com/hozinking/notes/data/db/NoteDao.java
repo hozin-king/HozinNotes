@@ -55,7 +55,7 @@ public interface NoteDao {
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.updatedAt ASC")
-    PagingSource<Integer, NoteEntity> pagingByTagOldest();
+    PagingSource<Integer, NoteEntity> pagingByTagOldest(long tagId);
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
@@ -63,7 +63,7 @@ public interface NoteDao {
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.title COLLATE NOCASE ASC")
-    PagingSource<Integer, NoteEntity> pagingByTagTitle();
+    PagingSource<Integer, NoteEntity> pagingByTagTitle(long tagId);
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
@@ -71,7 +71,7 @@ public interface NoteDao {
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.color ASC, n.updatedAt DESC")
-    PagingSource<Integer, NoteEntity> pagingByTagColor();
+    PagingSource<Integer, NoteEntity> pagingByTagColor(long tagId);
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"

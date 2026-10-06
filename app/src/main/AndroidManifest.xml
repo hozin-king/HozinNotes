@@ -39,6 +39,8 @@
         <activity android:name=".ui.TrashActivity" android:exported="false" />
         <activity android:name=".ui.VaultPinActivity" android:exported="false" />
         <activity android:name=".ui.VaultActivity" android:exported="false" />
+        <activity android:name=".ui.PasswordVaultActivity" android:exported="false" />
+        <activity android:name=".ui.PasswordEditActivity" android:exported="false" />
         <activity android:name=".ui.SettingsActivity" android:exported="false" />
         <activity android:name=".ui.DriveBackupListActivity" android:exported="false" />
         <activity android:name=".ui.mindmap.MindmapActivity" android:exported="false" />

@@ -73,6 +73,14 @@
                 android:src="@drawable/ic_lock" />
 
             <ImageButton
+                android:id="@+id/btn_passwords"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/password_vault"
+                android:src="@drawable/ic_key" />
+
+            <ImageButton
                 android:id="@+id/btn_more"
                 android:layout_width="48dp"
                 android:layout_height="48dp"

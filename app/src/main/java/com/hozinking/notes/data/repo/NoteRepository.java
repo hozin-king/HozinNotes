@@ -123,6 +123,60 @@ public class NoteRepository {
         });
     }
 
+    /**
+     * Duplikat catatan: salin judul (" (salinan)"), isi, format, folder,
+     * warna &amp; tag. Gambar, pengingat, status arsip/semat/kunci tidak ikut.
+     */
+    public void duplicateNote(long id, Cb<Long> cb) {
+        io.execute(() -> {
+            try {
+                NoteEntity src = noteDao.getById(id);
+                if (src == null || src.trashed) {
+                    cb.onResult(-1L);
+                    return;
+                }
+                NoteEntity n = new NoteEntity();
+                String t = src.title == null ? "" : src.title.trim();
+                n.title = t.isEmpty() ? "(salinan)" : t + " (salinan)";
+                n.content = src.content;
+                n.contentHtml = src.contentHtml;
+                n.isChecklist = src.isChecklist;
+                n.folderId = src.folderId;
+                n.color = src.color;
+                n.pinned = false;
+                n.archived = false;
+                n.trashed = false;
+                n.locked = false;
+                n.reminderTime = 0;
+                n.imageCount = 0;
+                long now = System.currentTimeMillis();
+                n.createdAt = now;
+                n.updatedAt = now;
+                long newId = noteDao.insert(n);
+                List<TagEntity> tags = tagDao.forNote(id);
+                if (tags != null) {
+                    for (TagEntity te : tags) {
+                        if (te == null || te.name == null || te.name.trim().isEmpty()) continue;
+                        TagEntity tag = tagDao.byName(te.name);
+                        long tagId;
+                        if (tag != null) {
+                            tagId = tag.id;
+                        } else {
+                            TagEntity fresh = new TagEntity();
+                            fresh.name = te.name;
+                            tagId = tagDao.insert(fresh);
+                            if (tagId == -1) continue;
+                        }
+                        tagDao.insertCrossRef(new NoteTagCrossRef(newId, tagId));
+                    }
+                }
+                cb.onResult(newId);
+            } catch (Exception e) {
+                cb.onResult(-1L);
+            }
+        });
+    }
+
     /** Hapus permanen: file gambar dulu, lalu baris images, lalu note. */
     public void deleteForever(long id, Cb<Void> cb) {
         io.execute(() -> {

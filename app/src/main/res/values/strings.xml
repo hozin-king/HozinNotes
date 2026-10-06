@@ -54,4 +54,31 @@
     <!-- Chat -->
     <string name="chat_unavailable_title">Chat belum aktif</string>
     <string name="chat_unavailable_msg">Fitur chat butuh file google-services.json dari Firebase.\nCatatan tetap berfungsi penuh tanpa itu.\nLihat FIREBASE_SETUP.md untuk panduan.</string>
+    <!-- Password vault -->
+    <string name="password_vault">Brankas Kata Sandi</string>
+    <string name="pw_search_hint">Cari kata sandi…</string>
+    <string name="pw_empty">Belum ada tersimpan.\nKetuk + untuk menambah.</string>
+    <string name="pw_new">Tambah baru</string>
+    <string name="pw_edit">Ubah</string>
+    <string name="pw_title_hint">Nama (mis. Gmail)</string>
+    <string name="pw_username_hint">Username / email</string>
+    <string name="pw_secret_hint">Kata sandi / API key</string>
+    <string name="pw_url_hint">URL situs (opsional)</string>
+    <string name="pw_notes_hint">Catatan (opsional)</string>
+    <string name="pw_generate">Buat acak</string>
+    <string name="pw_generated">Kata sandi acak dibuat</string>
+    <string name="pw_length">Panjang: %1$d</string>
+    <string name="pw_title_required">Nama wajib diisi</string>
+    <string name="pw_secret_required">Kata sandi wajib diisi</string>
+    <string name="pw_saved">Tersimpan</string>
+    <string name="pw_copied">Disalin — terhapus otomatis 30 detik</string>
+    <string name="pw_empty_secret">Secret kosong</string>
+    <string name="pw_copy">Salin</string>
+    <string name="pw_delete_title">Hapus entri?</string>
+    <string name="pw_delete_message">Entri ini akan dihapus permanen.</string>
+    <string name="close">Tutup</string>
+    <string name="delete">Hapus</string>
+    <string name="cancel">Batal</string>
+    <string name="deleted">Dihapus</string>
+
 </resources>
