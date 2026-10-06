@@ -76,9 +76,6 @@
     <string name="pw_copy">Salin</string>
     <string name="pw_delete_title">Hapus entri?</string>
     <string name="pw_delete_message">Entri ini akan dihapus permanen.</string>
-    <string name="close">Tutup</string>
-    <string name="delete">Hapus</string>
-    <string name="cancel">Batal</string>
     <string name="deleted">Dihapus</string>
 
 </resources>
