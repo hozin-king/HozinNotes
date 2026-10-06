@@ -76,6 +76,16 @@
     <string name="pw_copy">Salin</string>
     <string name="pw_delete_title">Hapus entri?</string>
     <string name="pw_delete_message">Entri ini akan dihapus permanen.</string>
+    <string name="pw_add">Tambah</string>
+    <string name="pw_vault_title">Brankas Kata Sandi</string>
+    <string name="pw_title">Nama</string>
+    <string name="pw_username">Username / email</string>
+    <string name="pw_url">URL situs</string>
+    <string name="pw_category">Kategori</string>
+    <string name="pw_secret">Kata sandi</string>
+    <string name="pw_notes">Catatan</string>
+    <string name="pw_favorite">Favorit</string>
+    <string name="pw_reveal">Tampilkan kata sandi</string>
     <string name="deleted">Dihapus</string>
 
 </resources>
