@@ -2,6 +2,7 @@ package com.hozinking.notes.ui.dialog;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.drawable.ColorDrawable;
 import android.text.InputType;
 import android.view.Gravity;
@@ -37,6 +38,7 @@ public class IosDialog {
     private String inputHint;
     private InputCallback inputCallback;
     private boolean inputNumeric;
+    private DialogInterface.OnDismissListener dismissListener;
 
     public IosDialog(Context ctx) {
         this.ctx = ctx;
@@ -86,10 +88,19 @@ public class IosDialog {
         return this;
     }
 
+    /** Listener dismiss dialog (mis. untuk wipe rahasia saat dialog ditutup). */
+    public IosDialog setOnDismissListener(DialogInterface.OnDismissListener l) {
+        this.dismissListener = l;
+        return this;
+    }
+
     public void show() {
         final Dialog dialog = new Dialog(ctx);
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
         dialog.setContentView(R.layout.dialog_ios);
+        if (dismissListener != null) {
+            dialog.setOnDismissListener(dismissListener);
+        }
         Window window = dialog.getWindow();
         if (window != null) {
             window.setBackgroundDrawable(new ColorDrawable(android.graphics.Color.TRANSPARENT));

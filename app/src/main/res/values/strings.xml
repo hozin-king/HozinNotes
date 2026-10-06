@@ -86,6 +86,7 @@
     <string name="pw_notes">Catatan</string>
     <string name="pw_favorite">Favorit</string>
     <string name="pw_reveal">Tampilkan kata sandi</string>
+    <string name="pw_strength">Kekuatan: %1$s</string>
     <string name="deleted">Dihapus</string>
 
 </resources>

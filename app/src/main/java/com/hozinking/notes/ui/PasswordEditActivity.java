@@ -165,7 +165,7 @@ public class PasswordEditActivity extends AppCompatActivity {
         char[] notes = etNotes.getText().toString().toCharArray();
         // repo.save me-wipe kedua char[] setelah dipakai.
         repo.save(e, secret, notes, id -> {
-            Toast.makeText(this, R.string.saved, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, R.string.pw_saved, Toast.LENGTH_SHORT).show();
             finish();
         });
     }
