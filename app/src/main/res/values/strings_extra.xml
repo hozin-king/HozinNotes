@@ -166,4 +166,10 @@
     <string name="chat_reported">Terima kasih, laporan dikirim</string>
     <string name="chat_blocked">Pengguna diblokir</string>
     <string name="chat_stranger">Teman acak</string>
+
+    <!-- Image viewer & rincian gambar -->
+    <string name="img_detail_title">Rincian</string>
+    <string name="img_detail_taken">Waktu ambil</string>
+    <string name="img_detail_file">Info berkas</string>
+    <string name="img_detail_path">Jalur lokal</string>
 </resources>

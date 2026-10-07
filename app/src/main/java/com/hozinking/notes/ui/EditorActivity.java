@@ -90,6 +90,7 @@ public class EditorActivity extends AppCompatActivity {
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<Intent> liveVideoLauncher;
+    private ActivityResultLauncher<Intent> viewerLauncher;
     private TextView imageHeader;
 
     private PopupWindow livePreviewPopup;
@@ -362,6 +363,9 @@ public class EditorActivity extends AppCompatActivity {
             public void onDestroyActionMode(ActionMode mode) {
             }
         });
+        viewerLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> main.post(this::refreshImages));
     }
 
     private void toggleStyleSpan(int s, int e, int style) {
@@ -927,7 +931,9 @@ public class EditorActivity extends AppCompatActivity {
                 imageHeader.setText(h);
             }
 
-            for (ImageRefEntity img : list) {
+            for (int idx = 0; idx < list.size(); idx++) {
+                final int position = idx;
+                final ImageRefEntity img = list.get(idx);
                 View item = getLayoutInflater()
                         .inflate(R.layout.item_editor_image, imageStrip, false);
                 ImageView iv = item.findViewById(R.id.img);
@@ -936,6 +942,8 @@ public class EditorActivity extends AppCompatActivity {
                 liveBadge.setVisibility(isLive ? View.VISIBLE : View.GONE);
                 imageStrip.addView(item);
                 bindStripImage(item, iv, img, isLive);
+                // Tap: buka image viewer fullscreen (swipe + zoom).
+                item.setOnClickListener(v -> openImageViewer(position));
                 item.findViewById(R.id.btn_remove)
                         .setOnClickListener(x -> confirmRemoveImage(img));
             }
@@ -1116,6 +1124,15 @@ public class EditorActivity extends AppCompatActivity {
             livePreviewTemp.delete();
             livePreviewTemp = null;
         }
+    }
+
+    /** Buka image viewer fullscreen pada posisi yang diketuk. */
+    private void openImageViewer(int position) {
+        if (noteId == -1) return;
+        Intent i = new Intent(this, ImageViewerActivity.class);
+        i.putExtra(ImageViewerActivity.EXTRA_NOTE_ID, noteId);
+        i.putExtra(ImageViewerActivity.EXTRA_POSITION, position);
+        viewerLauncher.launch(i);
     }
 
     private void confirmRemoveImage(ImageRefEntity img) {

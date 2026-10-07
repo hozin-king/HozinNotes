@@ -33,6 +33,7 @@
 
         <activity android:name=".ui.EditorActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ui.ImageViewerActivity" android:exported="false" />
         <activity android:name=".ui.SearchActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize|stateVisible" />
         <activity android:name=".ui.ArchiveActivity" android:exported="false" />
