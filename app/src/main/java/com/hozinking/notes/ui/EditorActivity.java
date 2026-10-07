@@ -947,32 +947,64 @@ public class EditorActivity extends AppCompatActivity {
                 final boolean isLive = LivePhotoUtils.isLivePhoto(img);
                 liveBadge.setVisibility(isLive ? View.VISIBLE : View.GONE);
                 imageStrip.addView(item);
-                NoteRepository.get(this).loadImagePlain(img, bytes -> {
-                    Bitmap bmp = null;
-                    try {
-                        if (bytes != null) {
-                            bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                        }
-                    } catch (Exception ignored) {
-                    }
-                    Bitmap f = bmp;
-                    final byte[] stillBytes = bytes;
-                    main.post(() -> {
-                        if (f != null) iv.setImageBitmap(f);
-                        if (isLive) {
-                            // Ketuk foto live -> putar klip videonya.
-                            item.setOnClickListener(v ->
-                                    new com.hozinking.notes.ui.dialog
-                                            .LivePhotoViewerDialog(
-                                            EditorActivity.this, img, stillBytes)
-                                            .show());
-                        }
-                    });
-                });
+                bindStripImage(item, iv, img, isLive);
                 item.findViewById(R.id.btn_remove)
                         .setOnClickListener(x -> confirmRemoveImage(img));
             }
         }));
+    }
+
+    /**
+     * Muat gambar untuk strip lampiran: pakai thumbnail tajam 512px dulu
+     * (cepat & hemat memori); fallback ke gambar penuh untuk data lama
+     * yang belum punya thumbnail. Foto live: ketuk -> muat gambar penuh
+     * lalu buka viewer (viewer butuh still resolusi penuh).
+     */
+    private void bindStripImage(View item, ImageView iv,
+                                ImageRefEntity img, boolean isLive) {
+        NoteRepository.get(this).loadThumbPlain(img, tbytes -> {
+            Bitmap tb = null;
+            try {
+                if (tbytes != null) {
+                    tb = BitmapFactory.decodeByteArray(tbytes, 0, tbytes.length);
+                }
+            } catch (Exception ignored) {
+            }
+            if (tb != null) {
+                Bitmap f = tb;
+                main.post(() -> {
+                    iv.setImageBitmap(f);
+                    bindLiveClick(item, img, isLive);
+                });
+                return;
+            }
+            // Fallback: data lama tanpa thumbnail -> gambar penuh.
+            NoteRepository.get(this).loadImagePlain(img, bytes -> {
+                Bitmap bmp = null;
+                try {
+                    if (bytes != null) {
+                        bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    }
+                } catch (Exception ignored) {
+                }
+                Bitmap f = bmp;
+                main.post(() -> {
+                    if (f != null) iv.setImageBitmap(f);
+                    bindLiveClick(item, img, isLive);
+                });
+            });
+        });
+    }
+
+    private void bindLiveClick(View item, ImageRefEntity img, boolean isLive) {
+        if (!isLive) return;
+        // Ketuk foto live -> muat still penuh lalu putar klip videonya.
+        item.setOnClickListener(v ->
+                NoteRepository.get(this).loadImagePlain(img, bytes ->
+                        main.post(() -> new com.hozinking.notes.ui.dialog
+                                .LivePhotoViewerDialog(
+                                EditorActivity.this, img, bytes)
+                                .show())));
     }
 
     private void confirmRemoveImage(ImageRefEntity img) {

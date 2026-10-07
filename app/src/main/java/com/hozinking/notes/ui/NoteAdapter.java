@@ -27,8 +27,9 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * Adapter paging untuk daftar catatan. Thumbnail dimuat async dari repo
- * (getImages -> loadImagePlain) dengan proteksi recycling ViewHolder.
+ * Adapter paging untuk daftar catatan. Thumbnail tajam 512px dimuat async
+ * dari repo (getImages -> loadThumbPlain, fallback loadImagePlain)
+ * dengan proteksi recycling ViewHolder.
  */
 public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
 
@@ -185,19 +186,40 @@ public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
                         return;
                     }
                     ImageRefEntity first = list.get(0);
-                    NoteRepository.get(appCtx).loadImagePlain(first, bytes -> {
-                        Bitmap bmp = null;
+                    // Thumbnail tajam 512px dulu; fallback ke gambar penuh
+                    // untuk data lama yang belum punya thumbnail.
+                    NoteRepository.get(appCtx).loadThumbPlain(first, tbytes -> {
+                        Bitmap tb = null;
                         try {
-                            if (bytes != null) {
-                                bmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                            if (tbytes != null) {
+                                tb = BitmapFactory.decodeByteArray(
+                                        tbytes, 0, tbytes.length);
                             }
                         } catch (Exception ignored) {
                         }
-                        Bitmap f = bmp;
-                        main.post(() -> {
-                            if (boundId != id) return;
-                            if (f != null) thumb.setImageBitmap(f);
-                            else thumb.setVisibility(View.GONE);
+                        if (tb != null) {
+                            Bitmap f = tb;
+                            main.post(() -> {
+                                if (boundId != id) return;
+                                thumb.setImageBitmap(f);
+                            });
+                            return;
+                        }
+                        NoteRepository.get(appCtx).loadImagePlain(first, bytes -> {
+                            Bitmap bmp = null;
+                            try {
+                                if (bytes != null) {
+                                    bmp = BitmapFactory.decodeByteArray(
+                                            bytes, 0, bytes.length);
+                                }
+                            } catch (Exception ignored) {
+                            }
+                            Bitmap f = bmp;
+                            main.post(() -> {
+                                if (boundId != id) return;
+                                if (f != null) thumb.setImageBitmap(f);
+                                else thumb.setVisibility(View.GONE);
+                            });
                         });
                     });
                 });

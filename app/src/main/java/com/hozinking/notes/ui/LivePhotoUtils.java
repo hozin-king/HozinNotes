@@ -64,10 +64,11 @@ public final class LivePhotoUtils {
             }
             if (frame == null) return null;
             try {
-                // Batasi sisi terpanjang 1600px agar hemat memori.
+                // Batasi sisi terpanjang 2048px agar hemat memori,
+                // kualitas JPEG 92 supaya still tetap tajam.
                 int w = frame.getWidth();
                 int h = frame.getHeight();
-                int maxSide = 1600;
+                int maxSide = 2048;
                 if (Math.max(w, h) > maxSide) {
                     float s = (float) maxSide / Math.max(w, h);
                     Bitmap scaled = Bitmap.createScaledBitmap(frame,
@@ -76,7 +77,7 @@ public final class LivePhotoUtils {
                     frame = scaled;
                 }
                 ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                frame.compress(Bitmap.CompressFormat.JPEG, 85, bos);
+                frame.compress(Bitmap.CompressFormat.JPEG, 92, bos);
                 return bos.toByteArray();
             } finally {
                 frame.recycle();

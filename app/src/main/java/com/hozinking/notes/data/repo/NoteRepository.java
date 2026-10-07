@@ -3,6 +3,7 @@ package com.hozinking.notes.data.repo;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.net.Uri;
 
 import androidx.paging.PagingSource;
@@ -43,8 +44,13 @@ public class NoteRepository {
     private static final long MAX_IMAGE_BYTES = 12L * 1024 * 1024; // 12 MB
     private static final long MAX_VIDEO_BYTES = 25L * 1024 * 1024; // 25 MB (live ~3 dtk)
     private static final long TRASH_RETENTION_MS = 30L * 24 * 3600 * 1000; // 30 hari
-    private static final int THUMB_MAX_PX = 256;
-    private static final int THUMB_JPEG_QUALITY = 80;
+    private static final int THUMB_MAX_PX = 512;
+    private static final int THUMB_JPEG_QUALITY = 85;
+    // Gambar penuh: batasi sisi terpanjang 2048px, JPEG quality 92.
+    // Bila gambar asli sudah JPEG dan <= 2048px, disimpan apa adanya
+    // (tanpa recompress) agar kualitas maksimal.
+    private static final int FULL_MAX_PX = 2048;
+    private static final int FULL_JPEG_QUALITY = 92;
 
     private static volatile NoteRepository instance;
 
@@ -267,8 +273,9 @@ public class NoteRepository {
     // ----------------------------------------------------------------- images
 
     /**
-     * Impor gambar dari Uri: baca (maks 12MB), hash, enkripsi ke filesDir/images,
-     * buat thumbnail 256px terenkripsi di filesDir/thumbs, catat ImageRefEntity,
+     * Impor gambar dari Uri: baca (maks 12MB), normalisasi (maks 2048px,
+     * JPEG 92), hash, enkripsi ke filesDir/images, buat thumbnail 512px
+     * terenkripsi di filesDir/thumbs, catat ImageRefEntity,
      * dan naikkan imageCount note.
      */
     public void addImageFromUri(Context ctx, long noteId, Uri uri, Cb<ImageRefEntity> cb) {
@@ -452,6 +459,55 @@ public class NoteRepository {
     }
 
     /**
+     * Normalisasi gambar penuh sebelum enkripsi: batasi sisi terpanjang ke
+     * FULL_MAX_PX dengan JPEG quality FULL_JPEG_QUALITY. Gambar yang sudah
+     * JPEG dan tidak melebihi batas dikembalikan apa adanya (tanpa
+     * recompress agar tidak ada penurunan kualitas). Decode memakai
+     * inSampleSize agar hemat memori untuk foto resolusi besar.
+     */
+    private static byte[] normalizeFullImage(byte[] plain) {
+        if (plain == null || plain.length < 4) return plain;
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeByteArray(plain, 0, plain.length, bounds);
+        int w = bounds.outWidth;
+        int h = bounds.outHeight;
+        if (w <= 0 || h <= 0) return plain; // bukan gambar yang dikenali
+        boolean isJpeg = (plain[0] & 0xFF) == 0xFF
+                && (plain[1] & 0xFF) == 0xD8
+                && (plain[2] & 0xFF) == 0xFF;
+        if (isJpeg && Math.max(w, h) <= FULL_MAX_PX) return plain;
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inSampleSize = 1;
+        while (Math.max(w, h) / (o.inSampleSize * 2) > FULL_MAX_PX) {
+            o.inSampleSize *= 2;
+        }
+        Bitmap bmp;
+        try {
+            bmp = BitmapFactory.decodeByteArray(plain, 0, plain.length, o);
+        } catch (OutOfMemoryError e) {
+            return plain;
+        }
+        if (bmp == null) return plain;
+        try {
+            Bitmap scaled = scaleDown(bmp, FULL_MAX_PX);
+            // JPEG tak mendukung alpha: flatten ke background putih.
+            Bitmap rgb = Bitmap.createBitmap(scaled.getWidth(),
+                    scaled.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(rgb);
+            c.drawColor(0xFFFFFFFF);
+            c.drawBitmap(scaled, 0, 0, null);
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            rgb.compress(Bitmap.CompressFormat.JPEG, FULL_JPEG_QUALITY, bos);
+            if (scaled != bmp) scaled.recycle();
+            rgb.recycle();
+            return bos.toByteArray();
+        } finally {
+            bmp.recycle();
+        }
+    }
+
+    /**
      * Inti penyimpanan gambar: enkripsi gambar penuh + thumbnail,
      * catat ImageRefEntity, naikkan imageCount note.
      * BERJALAN di thread executor (jangan panggil dari main thread).
@@ -460,6 +516,9 @@ public class NoteRepository {
                                 Cb<ImageRefEntity> cb) {
         try {
             CryptoManager crypto = CryptoManager.get(appCtx);
+                // Normalisasi dulu (2048px / JPEG 92), lalu hash hasil akhirnya
+                // agar verifikasi integritas konsisten.
+                plain = normalizeFullImage(plain);
                 String sha = HashUtils.sha256Hex(plain);
                 long ts = System.currentTimeMillis();
 
@@ -474,8 +533,9 @@ public class NoteRepository {
                 File encFile = new File(imgDir, "img_" + noteId + "_" + ts + ".bin");
                 writeBytes(encFile, crypto.encrypt(plain));
 
-                // 2) Thumbnail: dekripsi di memori -> Bitmap -> scale max 256px ->
-                //    JPEG 80 -> enkripsi ke disk.
+                // 2) Thumbnail: dekripsi di memori -> Bitmap -> scale max 512px ->
+                //    JPEG 85 -> enkripsi ke disk. Dipakai strip editor & daftar
+                //    note agar tajam tanpa decode gambar penuh.
                 byte[] encThumb;
                 Bitmap full = BitmapFactory.decodeByteArray(plain, 0, plain.length);
                 if (full == null) {
@@ -529,6 +589,29 @@ public class NoteRepository {
         io.execute(() -> {
             ref.createdAt = System.currentTimeMillis();
             cb.onResult(imageDao.insert(ref));
+        });
+    }
+
+    /**
+     * Dekripsi file thumbnail (512px, JPEG 85). Kembalikan null bila tak ada
+     * atau gagal — panggil loadImagePlain sebagai fallback (data lama).
+     */
+    public void loadThumbPlain(ImageRefEntity ref, Cb<byte[]> cb) {
+        io.execute(() -> {
+            try {
+                if (ref == null || ref.thumbPath == null) {
+                    cb.onResult(null);
+                    return;
+                }
+                File f = new File(ref.thumbPath);
+                if (!f.exists()) {
+                    cb.onResult(null);
+                    return;
+                }
+                cb.onResult(CryptoManager.get(appCtx).decryptFileToBytes(f));
+            } catch (Exception e) {
+                cb.onResult(null);
+            }
         });
     }
 
