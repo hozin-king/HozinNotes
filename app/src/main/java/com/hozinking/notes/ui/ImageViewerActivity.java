@@ -116,7 +116,9 @@ public class ImageViewerActivity extends AppCompatActivity {
         NoteRepository.get(this).loadImagePlain(ref, bytes -> main.post(() -> {
             if (position >= fullBytes.size()) return;
             fullBytes.set(position, bytes);
-            RecyclerView.ViewHolder h = pager.findViewHolderForAdapterPosition(position);
+            android.view.View rv = pager.getChildAt(0);
+            RecyclerView.ViewHolder h = (rv instanceof RecyclerView)
+                    ? ((RecyclerView) rv).findViewHolderForAdapterPosition(position) : null;
             if (h instanceof PageHolder && bytes != null) {
                 ((PageHolder) h).bind(bytes);
             }
