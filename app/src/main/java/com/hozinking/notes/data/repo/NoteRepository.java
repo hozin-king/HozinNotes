@@ -351,6 +351,76 @@ public class NoteRepository {
     }
 
     /**
+     * Konversi video yang SUDAH ADA menjadi Foto Live (ala menu
+     * "Konversi ke Foto live"): potong klip ~3 detik tanpa re-encode
+     * (track video saja; fallback = video asli bila potong gagal),
+     * ambil 1 frame tengah sebagai still, lalu simpan terenkripsi
+     * sebagai pasangan live photo baru di note ini.
+     *
+     * Jendela potong: 3 detik pertama; bila durasi &gt; 6 detik,
+     * ambil 3 detik di tengah.
+     */
+    public void convertVideoToLivePhoto(Context ctx, long noteId, Uri videoUri,
+                                        Cb<ImageRefEntity> cb) {
+        io.execute(() -> {
+            try {
+                long durMs = com.hozinking.notes.ui.LivePhotoUtils
+                        .getVideoDurationMs(ctx, videoUri);
+                long startMs;
+                long endMs;
+                if (durMs > 6000) {
+                    startMs = durMs / 2 - 1500;
+                    endMs = durMs / 2 + 1500;
+                } else {
+                    startMs = 0;
+                    endMs = durMs > 0 ? Math.min(3000, durMs) : 3000;
+                }
+
+                byte[] clip = com.hozinking.notes.ui.LivePhotoUtils
+                        .trimVideoClip(ctx, videoUri, startMs, endMs);
+                if (clip == null || clip.length > MAX_VIDEO_BYTES) {
+                    InputStream in = null;
+                    try {
+                        in = ctx.getContentResolver().openInputStream(videoUri);
+                        clip = (in == null) ? null : readBounded(in, MAX_VIDEO_BYTES);
+                    } finally {
+                        if (in != null) {
+                            try {
+                                in.close();
+                            } catch (IOException ignored) {
+                            }
+                        }
+                    }
+                }
+                if (clip == null) {
+                    cb.onResult(null);
+                    return;
+                }
+
+                CryptoManager crypto = CryptoManager.get(appCtx);
+                long ts = System.currentTimeMillis();
+                File vidDir = new File(appCtx.getFilesDir(), "videos");
+                //noinspection ResultOfMethodCallIgnored
+                vidDir.mkdirs();
+                File encVideo = new File(vidDir,
+                        "img_" + noteId + "_" + ts + "_live.bin");
+                writeBytes(encVideo, crypto.encrypt(clip));
+
+                byte[] still = com.hozinking.notes.ui.LivePhotoUtils
+                        .extractStillFrame(ctx, videoUri);
+                if (still == null) {
+                    deleteFileQuiet(encVideo.getAbsolutePath());
+                    cb.onResult(null);
+                    return;
+                }
+                saveImageBytes(noteId, still, encVideo.getAbsolutePath(), cb);
+            } catch (Exception e) {
+                cb.onResult(null);
+            }
+        });
+    }
+
+    /**
      * Dekripsi video live ke bytes plain (untuk diputar via file cache temp).
      */
     public void loadLiveVideoPlain(ImageRefEntity ref, Cb<byte[]> cb) {

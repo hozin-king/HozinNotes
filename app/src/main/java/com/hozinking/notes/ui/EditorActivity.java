@@ -83,6 +83,7 @@ public class EditorActivity extends AppCompatActivity {
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<Intent> liveVideoLauncher;
+    private ActivityResultLauncher<String> convertVideoLauncher;
     private TextView imageHeader;
 
     // Format toolbar (action mode seleksi)
@@ -150,6 +151,22 @@ public class EditorActivity extends AppCompatActivity {
                                                         R.string.live_failed,
                                                         Toast.LENGTH_SHORT).show();
                                             }
+                                        })));
+                    }
+                });
+        convertVideoLauncher = registerForActivityResult(
+                new ActivityResultContracts.GetContent(), uri -> {
+                    if (uri != null) {
+                        Uri u = uri;
+                        withNoteId(id -> NoteRepository.get(this)
+                                .convertVideoToLivePhoto(this, id, u,
+                                        img -> main.post(() -> {
+                                            refreshImages();
+                                            Toast.makeText(this,
+                                                    img != null
+                                                            ? R.string.live_converted
+                                                            : R.string.live_convert_failed,
+                                                    Toast.LENGTH_SHORT).show();
                                         })));
                     }
                 });
@@ -859,6 +876,15 @@ public class EditorActivity extends AppCompatActivity {
     }
 
     /**
+     * Konversi video yang sudah ada menjadi Foto Live: pilih video dari
+     * galeri, potong klip ~3 detik + 1 frame still, simpan sebagai
+     * pasangan live photo baru di note ini.
+     */
+    private void launchConvertVideo() {
+        convertVideoLauncher.launch("video/*");
+    }
+
+    /**
      * Foto Live: rekam video ~3 detik via kamera sistem, 1 frame tengah
      * jadi foto still. Disimpan terenkripsi sebagai pasangan still+video.
      */
@@ -982,6 +1008,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
+                .addItem(getString(R.string.live_convert), this::launchConvertVideo)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
                 .addItem(getString(note.locked ? R.string.note_unlock : R.string.note_lock),
                         this::toggleNoteLock)

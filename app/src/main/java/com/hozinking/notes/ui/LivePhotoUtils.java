@@ -2,13 +2,19 @@ package com.hozinking.notes.ui;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.media.MediaCodec;
+import android.media.MediaExtractor;
+import android.media.MediaFormat;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaMuxer;
 import android.net.Uri;
 
 import com.hozinking.notes.data.db.ImageRefEntity;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.nio.ByteBuffer;
 
 /**
  * Utilitas Foto Live (ala iOS Live Photos: 1 foto still + klip video ~3 detik).
@@ -81,6 +87,110 @@ public final class LivePhotoUtils {
             try {
                 r.release();
             } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /**
+     * Durasi video dalam milidetik, atau 0 bila tidak bisa dibaca.
+     */
+    public static long getVideoDurationMs(Context ctx, Uri videoUri) {
+        MediaMetadataRetriever r = new MediaMetadataRetriever();
+        try {
+            r.setDataSource(ctx, videoUri);
+            String d = r.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DURATION);
+            return d != null ? Long.parseLong(d) : 0;
+        } catch (Exception e) {
+            return 0;
+        } finally {
+            try {
+                r.release();
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /**
+     * Potong klip video TANPA re-encode: salin sampel track video saja
+     * dalam rentang [startMs, endMs] memakai MediaExtractor + MediaMuxer.
+     *
+     * @return bytes MP4 hasil potongan, atau null bila gagal
+     *         (pemanggil sebaiknya fallback ke file video asli).
+     */
+    public static byte[] trimVideoClip(Context ctx, Uri videoUri,
+                                       long startMs, long endMs) {
+        MediaExtractor extractor = new MediaExtractor();
+        MediaMuxer muxer = null;
+        File tmp = null;
+        try {
+            extractor.setDataSource(ctx, videoUri, null);
+            int videoTrack = -1;
+            MediaFormat format = null;
+            for (int i = 0; i < extractor.getTrackCount(); i++) {
+                MediaFormat f = extractor.getTrackFormat(i);
+                String mime = f.getString(MediaFormat.KEY_MIME);
+                if (mime != null && mime.startsWith("video/")) {
+                    videoTrack = i;
+                    format = f;
+                    break;
+                }
+            }
+            if (videoTrack < 0 || format == null) return null;
+
+            tmp = File.createTempFile("livetrim", ".mp4", ctx.getCacheDir());
+            muxer = new MediaMuxer(tmp.getAbsolutePath(),
+                    MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4);
+            int outTrack = muxer.addTrack(format);
+            muxer.start();
+
+            extractor.selectTrack(videoTrack);
+            extractor.seekTo(startMs * 1000L,
+                    MediaExtractor.SEEK_TO_CLOSEST_SYNC);
+            ByteBuffer buf = ByteBuffer.allocate(1024 * 1024);
+            MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
+            long endUs = endMs * 1000L;
+            for (;;) {
+                int n = extractor.readSampleData(buf, 0);
+                if (n < 0) break;
+                long pts = extractor.getSampleTime();
+                if (pts > endUs) break;
+                info.offset = 0;
+                info.size = n;
+                info.presentationTimeUs = pts;
+                info.flags = extractor.getSampleFlags();
+                muxer.writeSampleData(outTrack, buf, info);
+                if (!extractor.advance()) break;
+            }
+            muxer.stop();
+
+            FileInputStream fis = new FileInputStream(tmp);
+            try {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                byte[] chunk = new byte[8192];
+                int r;
+                while ((r = fis.read(chunk)) > 0) bos.write(chunk, 0, r);
+                byte[] out = bos.toByteArray();
+                return out.length > 0 ? out : null;
+            } finally {
+                fis.close();
+            }
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (muxer != null) {
+                try {
+                    muxer.release();
+                } catch (Exception ignored) {
+                }
+            }
+            try {
+                extractor.release();
+            } catch (Exception ignored) {
+            }
+            if (tmp != null) {
+                //noinspection ResultOfMethodCallIgnored
+                tmp.delete();
             }
         }
     }
