@@ -1,9 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Brand -->
-    <color name="brand_primary">#4A6CF7</color>
-    <color name="brand_primary_dark">#3A56C9</color>
+    <color name="brand_primary">#8B5CF6</color>
+    <color name="brand_primary_dark">#7C3AED</color>
     <color name="brand_accent">#2DD4BF</color>
+
+    <!-- Glassmorphism -->
+    <color name="glass_fill">#40FFFFFF</color>
+    <color name="glass_fill_soft">#2EFFFFFF</color>
+    <color name="glass_stroke">#66FFFFFF</color>
+    <color name="glass_accent">#A78BFA</color>
+    <color name="glass_accent_fill">#40A78BFA</color>
+    <color name="glass_accent_stroke">#80A78BFA</color>
+    <color name="glass_bubble_out">#CC8B5CF6</color>
+    <!-- Gradient stops: light -->
+    <color name="glass_bg_l1">#EDE9F9</color>
+    <color name="glass_bg_l2">#DCE6F7</color>
+    <color name="glass_bg_l3">#F3E9F4</color>
+    <color name="glass_blob_l1">#80B79CFA</color>
+    <color name="glass_blob_l2">#668FCBF8</color>
+    <!-- Gradient stops: dark -->
+    <color name="glass_bg_d1">#2A1B4E</color>
+    <color name="glass_bg_d2">#1B2452</color>
+    <color name="glass_bg_d3">#121A38</color>
+    <color name="glass_blob_d1">#667E4DE8</color>
+    <color name="glass_blob_d2">#4D4A7DDD</color>
 
     <!-- Light theme surfaces -->
     <color name="bg_light">#F5F6FA</color>
@@ -21,9 +42,13 @@
     <color name="text_secondary_dark">#98A1B5</color>
     <color name="divider_dark">#232A42</color>
 
+    <!-- Widget (light) -->
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_text_primary">#151A2B</color>
+    <color name="widget_text_secondary">#6B7280</color>
+
     <!-- Note colors -->
-    <color name="note_yellow">#FFE58A</color>
-    <color name="note_green">#B8E6B8</color>
+    <color name="note_yellow">#FFE58A</color>    <color name="note_green">#B8E6B8</color>
     <color name="note_blue">#BFD9FF</color>
     <color name="note_pink">#FFC9DD</color>
     <color name="note_purple">#D9C6FF</color>

@@ -19,7 +19,8 @@ import java.util.concurrent.Executors;
 
 /**
  * Menerima alarm pengingat -> tampilkan notifikasi -> tap membuka catatan.
- * Setelah berbunyi, reminderTime di-reset (pengingat sekali pakai).
+ * Pengingat sekali pakai: reminderTime di-reset. Pengingat berulang (harian/
+ * mingguan): dijadwalkan ulang ke kemunculan berikutnya.
  */
 public class ReminderReceiver extends BroadcastReceiver {
     public static final String CHANNEL_ID = "reminder_channel";
@@ -37,9 +38,19 @@ public class ReminderReceiver extends BroadcastReceiver {
                 if (n != null && !n.trashed && n.reminderTime > 0
                         && n.reminderTime <= System.currentTimeMillis() + 60_000) {
                     showNotification(context, n);
-                    // Sekali pakai: reset agar tidak bunyi lagi.
-                    AppDatabase.get(context).noteDao()
-                            .setReminder(noteId, 0, System.currentTimeMillis());
+                    long now = System.currentTimeMillis();
+                    if (n.reminderRepeat == ReminderScheduler.REPEAT_DAILY
+                            || n.reminderRepeat == ReminderScheduler.REPEAT_WEEKLY) {
+                        // Berulang: jadwalkan kemunculan berikutnya.
+                        long next = ReminderScheduler.nextRepeatTime(n.reminderTime,
+                                n.reminderRepeat);
+                        AppDatabase.get(context).noteDao().setReminder(noteId, next, now);
+                        ReminderScheduler.schedule(context.getApplicationContext(),
+                                noteId, next);
+                    } else {
+                        // Sekali pakai: reset agar tidak bunyi lagi.
+                        AppDatabase.get(context).noteDao().setReminder(noteId, 0, now);
+                    }
                 }
             } catch (Exception ignored) {
             } finally {
@@ -65,6 +76,13 @@ public class ReminderReceiver extends BroadcastReceiver {
         PendingIntent pi = PendingIntent.getActivity(ctx, (int) n.id, open,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
 
+        // Tombol "Tunda 10 menit" (snooze).
+        Intent snooze = new Intent(ctx, SnoozeReceiver.class);
+        snooze.setAction(SnoozeReceiver.ACTION_SNOOZE);
+        snooze.putExtra(ReminderScheduler.EXTRA_NOTE_ID, n.id);
+        PendingIntent snoozePi = PendingIntent.getBroadcast(ctx, (int) n.id + 0x100000,
+                snooze, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
         String title = (n.title == null || n.title.trim().isEmpty())
                 ? ctx.getString(R.string.notes_no_title) : n.title.trim();
         String text = n.content == null ? "" : n.content.trim();
@@ -78,7 +96,9 @@ public class ReminderReceiver extends BroadcastReceiver {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setAutoCancel(true)
-                .setContentIntent(pi);
+                .setContentIntent(pi)
+                .addAction(android.R.drawable.ic_menu_recent_history,
+                        ctx.getString(R.string.reminder_snooze), snoozePi);
         nm.notify((int) n.id, b.build());
     }
 }

@@ -16,7 +16,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
         TagEntity.class,
         NoteTagCrossRef.class,
         NoteFts.class
-}, version = 3, exportSchema = false)
+}, version = 4, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -37,6 +37,14 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /** v3 -> v4: pola ulang pengingat (0=sekali, 1=harian, 2=mingguan). */
+    static final Migration MIGRATION_3_4 = new Migration(3, 4) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE notes ADD COLUMN reminderRepeat INTEGER NOT NULL DEFAULT 0");
+        }
+    };
+
     public abstract NoteDao noteDao();
 
     public abstract ImageDao imageDao();
@@ -52,7 +60,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     Context app = ctx.getApplicationContext();
                     instance = Room.databaseBuilder(app, AppDatabase.class, "hozin_notes.db")
                             .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                             .build();
                 }
             }

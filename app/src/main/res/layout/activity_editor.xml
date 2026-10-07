@@ -74,7 +74,7 @@
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorSurface"
+        android:background="@drawable/glass_nav"
         android:paddingTop="4dp"
         android:paddingBottom="4dp"
         android:scrollbars="none">

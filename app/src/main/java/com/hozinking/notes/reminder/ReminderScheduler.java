@@ -20,6 +20,14 @@ public class ReminderScheduler {
     public static final String ACTION_REMIND = "com.hozinking.notes.ACTION_REMIND";
     public static final String EXTRA_NOTE_ID = "note_id";
 
+    /** Pola ulang pengingat. */
+    public static final int REPEAT_NONE = 0;
+    public static final int REPEAT_DAILY = 1;
+    public static final int REPEAT_WEEKLY = 2;
+
+    /** Tunda (snooze) default: 10 menit. */
+    public static final long SNOOZE_DELAY_MS = 10L * 60 * 1000;
+
     /** true bila aplikasi boleh memakai exact alarm (Android 12+ bisa dicabut user). */
     public static boolean canScheduleExact(Context ctx) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true;
@@ -52,6 +60,44 @@ public class ReminderScheduler {
         AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
         am.cancel(pending(ctx, noteId, PendingIntent.FLAG_NO_CREATE));
+    }
+
+    /**
+     * Tunda pengingat: bunyikan lagi setelah delayMs dari sekarang.
+     * reminderRepeat TIDAK diubah (pola ulang tetap berlaku).
+     */
+    public static void snooze(Context ctx, long noteId, long delayMs) {
+        long when = System.currentTimeMillis() + delayMs;
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                AppDatabase.get(ctx).noteDao()
+                        .setReminder(noteId, when, System.currentTimeMillis());
+            } catch (Exception ignored) {
+            }
+        });
+        schedule(ctx, noteId, when);
+    }
+
+    /**
+     * Hitung kemunculan berikutnya dari pola ulang, selalu di masa depan.
+     * from = waktu bunyi terakhir (atau yang dijadwalkan).
+     */
+    public static long nextRepeatTime(long from, int repeat) {
+        long step;
+        if (repeat == REPEAT_DAILY) {
+            step = 24L * 3600 * 1000;
+        } else if (repeat == REPEAT_WEEKLY) {
+            step = 7L * 24 * 3600 * 1000;
+        } else {
+            return 0;
+        }
+        long next = from + step;
+        long now = System.currentTimeMillis();
+        // Kejar ketertinggalan (mis. HP mati lama): lompat sampai > sekarang.
+        while (next <= now) {
+            next += step;
+        }
+        return next;
     }
 
     /** Jadwal ulang semua pengingat aktif (dipakai saat BOOT_COMPLETED). */

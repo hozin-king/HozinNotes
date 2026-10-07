@@ -30,6 +30,9 @@ public class NoteEntity {
     public long updatedAt;
     /** Waktu pengingat (epoch ms). 0 = tidak ada pengingat. */
     public long reminderTime;
+
+    /** Pola ulang pengingat: 0=sekali, 1=harian, 2=mingguan. */
+    public int reminderRepeat;
     /** Dikunci pakai PIN (Ruang Privat). */
     public boolean locked;
     /** true bila content disimpan sebagai HTML (teks berformat/tabel). */

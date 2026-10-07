@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Background gradient kaca (mode terang): ungu-biru lembut + blob aurora. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="135"
+                android:startColor="@color/glass_bg_l1"
+                android:centerColor="@color/glass_bg_l2"
+                android:endColor="@color/glass_bg_l3" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="420dp"
+                android:centerX="0.85"
+                android:centerY="0.08"
+                android:startColor="@color/glass_blob_l1"
+                android:endColor="#00B79CFA" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="520dp"
+                android:centerX="0.12"
+                android:centerY="0.92"
+                android:startColor="@color/glass_blob_l2"
+                android:endColor="#008FCBF8" />
+        </shape>
+    </item>
+</layer-list>

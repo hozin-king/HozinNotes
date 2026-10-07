@@ -68,11 +68,31 @@
         </receiver>
 
         <receiver
+            android:name=".reminder.SnoozeReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.hozinking.notes.ACTION_SNOOZE" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".reminder.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.NoteWidgetProvider"
+            android:exported="false"
+            android:label="@string/widget_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/note_widget_info" />
         </receiver>
 
     </application>

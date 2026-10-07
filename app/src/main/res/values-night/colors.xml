@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Varian gelap warna catatan: tetap kontras dengan teks ?attr/colorOnSurface. -->
 <resources>
+    <color name="widget_surface">#161B2E</color>
+    <color name="widget_text_primary">#F1F4FB</color>
+    <color name="widget_text_secondary">#98A1B5</color>
     <color name="note_yellow">#8A6D1B</color>
     <color name="note_green">#2E5B34</color>
     <color name="note_blue">#2C4A73</color>

@@ -240,6 +240,7 @@ public class EditorActivity extends AppCompatActivity {
     protected void onPause() {
         saveHandler.removeCallbacks(saveRunnable);
         saveNow();
+        com.hozinking.notes.widget.NoteWidgetProvider.refreshAll(this);
         super.onPause();
     }
 
@@ -897,6 +898,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.notes_tags_title), this::showTagsDialog)
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
                 .addItem(getString(R.string.share), this::shareNote)
+                .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
                 .addItem(getString(note.locked ? R.string.note_unlock : R.string.note_lock),
                         this::toggleNoteLock)
@@ -938,6 +940,21 @@ public class EditorActivity extends AppCompatActivity {
         }
     }
 
+    /** Ekspor catatan ini menjadi PDF lalu bagikan. */
+    private void exportPdf() {
+        if (note == null) return;
+        saveNow(); // sinkronkan field dulu
+        String title = displayTitle();
+        String body = note.content == null ? "" : note.content;
+        if (note.contentHtml) {
+            body = Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY).toString();
+        }
+        // Sederhanakan marker checklist markdown agar rapi di PDF.
+        body = body.replaceAll("(?m)^\\s*- \\[ \\] ", "☐ ")
+                .replaceAll("(?m)^\\s*- \\[[xX]\\] ", "☑ ");
+        PdfExporter.exportAndShare(this, title, body.trim());
+    }
+
     /** Duplikat catatan ini (teks + tag + warna + folder). */
     private void duplicateNote() {
         if (note == null) return;
@@ -974,9 +991,11 @@ public class EditorActivity extends AppCompatActivity {
             new IosDialog(this)
                     .setTitle(getString(R.string.reminder_title))
                     .setMessage(getString(R.string.reminder_existing,
-                            formatReminder(note.reminderTime)))
+                            formatReminder(note.reminderTime), repeatLabel(note.reminderRepeat)))
                     .setPositive(getString(R.string.reminder_cancel), () -> {
                         note.reminderTime = 0;
+                        note.reminderRepeat = com.hozinking.notes.reminder
+                                .ReminderScheduler.REPEAT_NONE;
                         saveNow();
                         com.hozinking.notes.reminder.ReminderScheduler.cancel(this, noteId);
                     })
@@ -1016,12 +1035,7 @@ public class EditorActivity extends AppCompatActivity {
                                         Toast.LENGTH_LONG).show();
                             }
                             note.reminderTime = when;
-                            saveNow();
-                            com.hozinking.notes.reminder.ReminderScheduler
-                                    .schedule(this, noteId, when);
-                            Toast.makeText(this,
-                                    getString(R.string.reminder_set_ok, formatReminder(when)),
-                                    Toast.LENGTH_SHORT).show();
+                            showRepeatPicker(when);
                         },
                         c.get(java.util.Calendar.HOUR_OF_DAY),
                         c.get(java.util.Calendar.MINUTE), true)
@@ -1029,6 +1043,42 @@ public class EditorActivity extends AppCompatActivity {
                 c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH),
                 c.get(java.util.Calendar.DAY_OF_MONTH))
                 .show();
+    }
+
+    /** Pilih pola ulang pengingat setelah waktu ditentukan. */
+    private void showRepeatPicker(long when) {
+        new IosActionSheet(this)
+                .setTitle(getString(R.string.reminder_repeat_title))
+                .addItem(getString(R.string.reminder_repeat_once),
+                        () -> applyReminder(when,
+                                com.hozinking.notes.reminder.ReminderScheduler.REPEAT_NONE))
+                .addItem(getString(R.string.reminder_repeat_daily),
+                        () -> applyReminder(when,
+                                com.hozinking.notes.reminder.ReminderScheduler.REPEAT_DAILY))
+                .addItem(getString(R.string.reminder_repeat_weekly),
+                        () -> applyReminder(when,
+                                com.hozinking.notes.reminder.ReminderScheduler.REPEAT_WEEKLY))
+                .show();
+    }
+
+    private void applyReminder(long when, int repeat) {
+        note.reminderTime = when;
+        note.reminderRepeat = repeat;
+        saveNow();
+        com.hozinking.notes.reminder.ReminderScheduler.schedule(this, noteId, when);
+        Toast.makeText(this,
+                getString(R.string.reminder_set_ok, formatReminder(when), repeatLabel(repeat)),
+                Toast.LENGTH_SHORT).show();
+    }
+
+    private String repeatLabel(int repeat) {
+        if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_DAILY) {
+            return getString(R.string.reminder_repeat_daily);
+        }
+        if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_WEEKLY) {
+            return getString(R.string.reminder_repeat_weekly);
+        }
+        return getString(R.string.reminder_repeat_once);
     }
 
     private String formatReminder(long when) {
