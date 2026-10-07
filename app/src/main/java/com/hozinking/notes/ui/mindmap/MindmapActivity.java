@@ -40,6 +40,7 @@ public class MindmapActivity extends AppCompatActivity {
         setContentView(R.layout.activity_mindmap);
 
         mindmapView = findViewById(R.id.mindmap);
+        findViewById(R.id.btn_back).setOnClickListener(v -> finish());
 
         NoteRepository repo = NoteRepository.get(this);
         // Callback repo berjalan di background thread -> post ke main.

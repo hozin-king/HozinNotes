@@ -81,7 +81,7 @@ public class MindmapView extends View {
         textPaint.setTextSize(34f);
 
         rootPaint.setStyle(Paint.Style.FILL);
-        rootPaint.setColor(0xFF4A6CF7); // brand_primary
+        rootPaint.setColor(0xFF8B5CF6); // brand_primary (lavender)
         rootPaint.setShadowLayer(10f, 0f, 5f, 0x50000000);
 
         touchSlop = android.view.ViewConfiguration.get(context).getScaledTouchSlop();
@@ -114,7 +114,7 @@ public class MindmapView extends View {
 
         rootNode = new Node();
         rootNode.label = getContext().getString(R.string.mindmap_root);
-        rootNode.color = 0xFF4A6CF7;
+        rootNode.color = 0xFF8B5CF6;
         rootNode.radius = 120f;
         rootNode.x = 0f;
         rootNode.y = 0f;

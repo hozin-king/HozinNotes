@@ -19,4 +19,9 @@ public class ImageRefEntity {
     /** SHA-256 hex dari BYTES PLAIN gambar asli (untuk verifikasi integritas setelah dekripsi). */
     public String sha256;
     public long createdAt;
+    /**
+     * Path absolut file VIDEO live terenkripsi (filesDir/videos/..._live.bin).
+     * Null/kosong = foto biasa. Suffix "_live" membedakannya di file system.
+     */
+    public String liveVideoPath;
 }

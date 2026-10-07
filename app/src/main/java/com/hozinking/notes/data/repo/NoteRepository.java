@@ -41,6 +41,7 @@ import java.util.concurrent.Executors;
  */
 public class NoteRepository {
     private static final long MAX_IMAGE_BYTES = 12L * 1024 * 1024; // 12 MB
+    private static final long MAX_VIDEO_BYTES = 25L * 1024 * 1024; // 25 MB (live ~3 dtk)
     private static final long TRASH_RETENTION_MS = 30L * 24 * 3600 * 1000; // 30 hari
     private static final int THUMB_MAX_PX = 256;
     private static final int THUMB_JPEG_QUALITY = 80;
@@ -284,8 +285,111 @@ public class NoteRepository {
                     cb.onResult(null);
                     return;
                 }
+                saveImageBytes(noteId, plain, null, cb);
+            } catch (Exception e) {
+                cb.onResult(null);
+            } finally {
+                if (in != null) {
+                    try {
+                        in.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Simpan foto live: video ~3 detik dienkripsi ke filesDir/videos/*_live.bin,
+     * 1 frame tengah jadi foto still (disimpan via {@link #saveImageBytes}).
+     * Suffix "_live" membedakan file video dari foto biasa di file system.
+     */
+    public void addLivePhotoFromVideo(Context ctx, long noteId, Uri videoUri,
+                                      Cb<ImageRefEntity> cb) {
+        io.execute(() -> {
+            InputStream in = null;
+            try {
+                in = ctx.getContentResolver().openInputStream(videoUri);
+                if (in == null) {
+                    cb.onResult(null);
+                    return;
+                }
+                byte[] videoPlain = readBounded(in, MAX_VIDEO_BYTES);
+                if (videoPlain == null) { // > 25MB
+                    cb.onResult(null);
+                    return;
+                }
 
                 CryptoManager crypto = CryptoManager.get(appCtx);
+                long ts = System.currentTimeMillis();
+                File vidDir = new File(appCtx.getFilesDir(), "videos");
+                //noinspection ResultOfMethodCallIgnored
+                vidDir.mkdirs();
+                File encVideo = new File(vidDir,
+                        "img_" + noteId + "_" + ts + "_live.bin");
+                writeBytes(encVideo, crypto.encrypt(videoPlain));
+
+                byte[] still = com.hozinking.notes.ui.LivePhotoUtils
+                        .extractStillFrame(ctx, videoUri);
+                if (still == null) {
+                    deleteFileQuiet(encVideo.getAbsolutePath());
+                    cb.onResult(null);
+                    return;
+                }
+                saveImageBytes(noteId, still, encVideo.getAbsolutePath(), cb);
+            } catch (Exception e) {
+                cb.onResult(null);
+            } finally {
+                if (in != null) {
+                    try {
+                        in.close();
+                    } catch (IOException ignored) {
+                    }
+                }
+            }
+        });
+    }
+
+    /**
+     * Dekripsi video live ke bytes plain (untuk diputar via file cache temp).
+     */
+    public void loadLiveVideoPlain(ImageRefEntity ref, Cb<byte[]> cb) {
+        io.execute(() -> {
+            try {
+                if (ref == null || ref.liveVideoPath == null
+                        || ref.liveVideoPath.isEmpty()) {
+                    cb.onResult(null);
+                    return;
+                }
+                byte[] plain = CryptoManager.get(appCtx)
+                        .decryptFileToBytes(new File(ref.liveVideoPath));
+                cb.onResult(plain);
+            } catch (Exception e) {
+                cb.onResult(null);
+            }
+        });
+    }
+
+    /** Hitung total foto live di SEMUA note. */
+    public void countLivePhotos(Cb<Integer> cb) {
+        io.execute(() -> {
+            try {
+                cb.onResult(imageDao.countLivePhotos());
+            } catch (Exception e) {
+                cb.onResult(0);
+            }
+        });
+    }
+
+    /**
+     * Inti penyimpanan gambar: enkripsi gambar penuh + thumbnail,
+     * catat ImageRefEntity, naikkan imageCount note.
+     * BERJALAN di thread executor (jangan panggil dari main thread).
+     */
+    private void saveImageBytes(long noteId, byte[] plain, String liveVideoPath,
+                                Cb<ImageRefEntity> cb) {
+        try {
+            CryptoManager crypto = CryptoManager.get(appCtx);
                 String sha = HashUtils.sha256Hex(plain);
                 long ts = System.currentTimeMillis();
 
@@ -328,6 +432,7 @@ public class NoteRepository {
                 ref.thumbPath = thFile.getAbsolutePath();
                 ref.sha256 = sha;
                 ref.createdAt = ts;
+                ref.liveVideoPath = liveVideoPath; // null = foto biasa
                 ref.id = imageDao.insert(ref);
 
                 NoteEntity note = noteDao.getById(noteId);
@@ -336,17 +441,9 @@ public class NoteRepository {
                     noteDao.update(note);
                 }
                 cb.onResult(ref);
-            } catch (Exception e) {
-                cb.onResult(null);
-            } finally {
-                if (in != null) {
-                    try {
-                        in.close();
-                    } catch (IOException ignored) {
-                    }
-                }
-            }
-        });
+        } catch (Exception e) {
+            cb.onResult(null);
+        }
     }
 
     public void getImages(long noteId, Cb<List<ImageRefEntity>> cb) {
@@ -394,6 +491,7 @@ public class NoteRepository {
             if (ref != null) {
                 deleteFileQuiet(ref.encPath);
                 deleteFileQuiet(ref.thumbPath);
+                deleteFileQuiet(ref.liveVideoPath); // null-safe: foto biasa tak punya
                 imageDao.delete(ref.id);
                 NoteEntity note = noteDao.getById(ref.noteId);
                 if (note != null) {

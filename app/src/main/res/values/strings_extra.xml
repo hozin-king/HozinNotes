@@ -124,18 +124,32 @@
     <string name="update_available_msg">Hozin Notes %1$s tersedia.\n\n%2$s</string>
     <string name="update_download">Download</string>
     <string name="update_later">Nanti</string>
+    <string name="back">Kembali</string>
 
     <!-- Mindmap -->
-    <string name="mindmap_root">Semua Catatan</string>
+    <string name="mindmap_title">Mindmap</string>    <string name="mindmap_root">Semua Catatan</string>
     <string name="mindmap_branch_folders">Folder</string>
     <string name="mindmap_branch_tags">Tag</string>
     <string name="mindmap_empty">Belum ada folder atau tag</string>
     <string name="mindmap_folder_info">Kelola catatan folder ini lewat tab Folder.</string>
     <string name="mindmap_tag_info">Kelola label ini lewat pengaturan catatan.</string>
 
+    <!-- Foto Live -->
+    <string name="live_photo">Foto Live</string>
+    <string name="live_photo_title">Foto Live</string>
+    <string name="live_saved">Foto live tersimpan</string>
+    <string name="live_failed">Gagal menyimpan foto live</string>
+    <string name="live_play">Putar</string>
+    <string name="live_tap_play">Ketuk putar untuk melihat klip video</string>
+    <string name="live_tap_replay">Ketuk untuk memutar ulang</string>
+    <string name="live_loading">Memuat video…</string>
+    <string name="live_error">Video tidak dapat dimuat</string>
+    <string name="live_count">📷 %1$d foto live</string>
+    <string name="live_count_global">📷 %1$d foto live tersimpan di semua catatan</string>
+    <string name="attachments_header">🖼️ %1$d lampiran</string>
+
     <!-- Chat -->
-    <string name="chat_name_desc">Chat acak dengan orang asing.\nCukup isi nama tampilan — tanpa password.</string>
-    <string name="chat_name_hint">Nama tampilan</string>
+    <string name="chat_name_desc">Chat acak dengan orang asing.\nCukup isi nama tampilan — tanpa password.</string>    <string name="chat_name_hint">Nama tampilan</string>
     <string name="chat_name_empty">Isi nama tampilan dulu</string>
     <string name="chat_start">Mulai</string>
     <string name="chat_login_google">Masuk dengan Google</string>

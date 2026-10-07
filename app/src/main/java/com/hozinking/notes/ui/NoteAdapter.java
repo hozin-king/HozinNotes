@@ -92,12 +92,11 @@ public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
         private final TextView date;
         private final ImageView thumb;
         private final ImageView pin;
+        private final View colorStrip;
         private long boundId = -1;
-        private final int defaultCardBg;
+        private final int glassCardBg;
         private final int defaultTitleColor;
         private final int defaultSubColor;
-        private static final int ON_COLOR_TEXT = 0xFF202124;
-        private static final int ON_COLOR_SUBTEXT = 0xFF5F6368;
 
         VH(@NonNull View v) {
             super(v);
@@ -107,13 +106,14 @@ public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
             date = v.findViewById(R.id.date);
             thumb = v.findViewById(R.id.thumb);
             pin = v.findViewById(R.id.pin_badge);
+            colorStrip = v.findViewById(R.id.color_strip);
+            glassCardBg = androidx.core.content.ContextCompat.getColor(
+                    v.getContext(), R.color.glass_fill);
             android.content.res.TypedArray ta = v.getContext().obtainStyledAttributes(
-                    new int[]{com.google.android.material.R.attr.colorSurface,
-                            android.R.attr.textColorPrimary,
+                    new int[]{android.R.attr.textColorPrimary,
                             android.R.attr.textColorSecondary});
-            defaultCardBg = ta.getColor(0, 0xFF1E1E1E);
-            defaultTitleColor = ta.getColor(1, 0xFFFFFFFF);
-            defaultSubColor = ta.getColor(2, 0xFFB0B0B0);
+            defaultTitleColor = ta.getColor(0, 0xFFFFFFFF);
+            defaultSubColor = ta.getColor(1, 0xFFB0B0B0);
             ta.recycle();
             v.setOnClickListener(x -> {
                 NoteEntity n = getItem(getBindingAdapterPosition());
@@ -159,20 +159,19 @@ public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
             }
             pin.setVisibility(n.pinned ? View.VISIBLE : View.GONE);
 
-            // Kartu berwarna ala Keep: teks gelap di atas warna, default ikut tema.
+            // Warna note = strip aksen tipis di tepi kiri kartu; body kartu
+            // SELALU frosted glass agar teks tetap kontras terbaca.
             if (n.color != 0) {
-                card.setCardBackgroundColor(n.color);
-                title.setTextColor(ON_COLOR_TEXT);
-                preview.setTextColor(ON_COLOR_SUBTEXT);
-                date.setTextColor(ON_COLOR_SUBTEXT);
-                pin.setImageTintList(ColorStateList.valueOf(ON_COLOR_TEXT));
+                colorStrip.setVisibility(View.VISIBLE);
+                colorStrip.setBackgroundTintList(ColorStateList.valueOf(n.color));
             } else {
-                card.setCardBackgroundColor(defaultCardBg);
-                title.setTextColor(defaultTitleColor);
-                preview.setTextColor(defaultSubColor);
-                date.setTextColor(defaultSubColor);
-                pin.setImageTintList(null);
+                colorStrip.setVisibility(View.GONE);
             }
+            card.setCardBackgroundColor(glassCardBg);
+            title.setTextColor(defaultTitleColor);
+            preview.setTextColor(defaultSubColor);
+            date.setTextColor(defaultSubColor);
+            pin.setImageTintList(null);
 
             thumb.setImageDrawable(null);
             if (n.imageCount > 0) {

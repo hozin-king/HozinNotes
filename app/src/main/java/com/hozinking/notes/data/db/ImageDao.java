@@ -25,4 +25,7 @@ public interface ImageDao {
 
     @Query("DELETE FROM images")
     void clearAll();
+
+    @Query("SELECT COUNT(*) FROM images WHERE liveVideoPath IS NOT NULL AND liveVideoPath != ''")
+    int countLivePhotos();
 }

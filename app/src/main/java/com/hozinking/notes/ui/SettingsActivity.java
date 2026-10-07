@@ -268,6 +268,15 @@ public class SettingsActivity extends AppCompatActivity {
             btnUpdate.setOnClickListener(v ->
                     com.hozinking.notes.update.UpdateChecker.checkManual(this));
         }
+
+        // ---------- Foto Live: hitungan global ----------
+        TextView liveCounter = findViewById(R.id.live_counter);
+        if (liveCounter != null) {
+            com.hozinking.notes.data.repo.NoteRepository.get(this)
+                    .countLivePhotos(n -> mainH.post(() ->
+                            liveCounter.setText(
+                                    getString(R.string.live_count_global, n))));
+        }
     }
 
     // ---------- Tema ----------

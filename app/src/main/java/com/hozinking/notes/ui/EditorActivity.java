@@ -79,8 +79,11 @@ public class EditorActivity extends AppCompatActivity {
     private final Runnable saveRunnable = this::saveNow;
 
     private Uri cameraUri;
+    private Uri liveVideoUri;
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<Uri> cameraLauncher;
+    private ActivityResultLauncher<Intent> liveVideoLauncher;
+    private TextView imageHeader;
 
     // Format toolbar (action mode seleksi)
     private static final int MENU_BOLD = 1101;
@@ -106,6 +109,7 @@ public class EditorActivity extends AppCompatActivity {
         titleInput = findViewById(R.id.title_input);
         contentInput = findViewById(R.id.content_input);
         imageStrip = findViewById(R.id.image_strip);
+        imageHeader = findViewById(R.id.image_header);
 
         // URL bisa di-tap langsung dari editor (tanpa merusak kursor/seleksi).
         Linkify.addLinks(contentInput, Linkify.WEB_URLS);
@@ -129,6 +133,26 @@ public class EditorActivity extends AppCompatActivity {
                                         img -> main.post(this::refreshImages)));
                     }
                 });
+        liveVideoLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(), result -> {
+                    if (result.getResultCode() == RESULT_OK && liveVideoUri != null) {
+                        Uri u = liveVideoUri;
+                        withNoteId(id -> NoteRepository.get(this)
+                                .addLivePhotoFromVideo(this, id, u,
+                                        img -> main.post(() -> {
+                                            refreshImages();
+                                            if (img != null) {
+                                                Toast.makeText(this,
+                                                        R.string.live_saved,
+                                                        Toast.LENGTH_SHORT).show();
+                                            } else {
+                                                Toast.makeText(this,
+                                                        R.string.live_failed,
+                                                        Toast.LENGTH_SHORT).show();
+                                            }
+                                        })));
+                    }
+                });
 
         SimpleTextWatcher watcher = new SimpleTextWatcher(s -> scheduleSave());
         titleInput.addTextChangedListener(watcher);
@@ -143,6 +167,7 @@ public class EditorActivity extends AppCompatActivity {
         findViewById(R.id.btn_checklist_toggle).setOnClickListener(v -> toggleChecklist());
         findViewById(R.id.btn_gallery).setOnClickListener(v -> galleryLauncher.launch("image/*"));
         findViewById(R.id.btn_camera).setOnClickListener(v -> launchCamera());
+        findViewById(R.id.btn_live).setOnClickListener(v -> launchLivePhoto());
         findViewById(R.id.btn_menu).setOnClickListener(v -> showMenu());
 
         noteId = getIntent().getLongExtra("noteId", -1);
@@ -833,19 +858,68 @@ public class EditorActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Foto Live: rekam video ~3 detik via kamera sistem, 1 frame tengah
+     * jadi foto still. Disimpan terenkripsi sebagai pasangan still+video.
+     */
+    private void launchLivePhoto() {
+        try {
+            File dir = new File(getCacheDir(), "camera");
+            if (!dir.exists()) dir.mkdirs();
+            File f = new File(dir, "live_" + System.currentTimeMillis() + ".mp4");
+            //noinspection ResultOfMethodCallIgnored
+            f.createNewFile();
+            liveVideoUri = FileProvider.getUriForFile(
+                    this, BuildConfig.APPLICATION_ID + ".fileprovider", f);
+            Intent i = new Intent(android.provider.MediaStore.ACTION_VIDEO_CAPTURE);
+            i.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, liveVideoUri);
+            i.putExtra(android.provider.MediaStore.EXTRA_DURATION_LIMIT, 3);
+            i.putExtra(android.provider.MediaStore.EXTRA_VIDEO_QUALITY, 0);
+            i.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            liveVideoLauncher.launch(i);
+        } catch (Exception e) {
+            Toast.makeText(this, String.valueOf(e.getMessage()), Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void refreshImages() {
         if (noteId == -1 || note == null) {
             imageStrip.removeAllViews();
+            imageHeader.setVisibility(View.GONE);
             return;
         }
         NoteRepository.get(this).getImages(noteId, list -> main.post(() -> {
             imageStrip.removeAllViews();
-            if (list == null) return;
+            if (list == null) {
+                imageHeader.setVisibility(View.GONE);
+                return;
+            }
             note.imageCount = list.size();
+
+            // Header hitungan: total lampiran + berapa foto live di note ini.
+            int liveCount = 0;
+            for (ImageRefEntity im : list) {
+                if (LivePhotoUtils.isLivePhoto(im)) liveCount++;
+            }
+            if (list.isEmpty()) {
+                imageHeader.setVisibility(View.GONE);
+            } else {
+                imageHeader.setVisibility(View.VISIBLE);
+                String h = getString(R.string.attachments_header, list.size());
+                if (liveCount > 0) {
+                    h += "  •  " + getString(R.string.live_count, liveCount);
+                }
+                imageHeader.setText(h);
+            }
+
             for (ImageRefEntity img : list) {
                 View item = getLayoutInflater()
                         .inflate(R.layout.item_editor_image, imageStrip, false);
                 ImageView iv = item.findViewById(R.id.img);
+                View liveBadge = item.findViewById(R.id.live_badge);
+                final boolean isLive = LivePhotoUtils.isLivePhoto(img);
+                liveBadge.setVisibility(isLive ? View.VISIBLE : View.GONE);
                 imageStrip.addView(item);
                 NoteRepository.get(this).loadImagePlain(img, bytes -> {
                     Bitmap bmp = null;
@@ -856,8 +930,17 @@ public class EditorActivity extends AppCompatActivity {
                     } catch (Exception ignored) {
                     }
                     Bitmap f = bmp;
+                    final byte[] stillBytes = bytes;
                     main.post(() -> {
                         if (f != null) iv.setImageBitmap(f);
+                        if (isLive) {
+                            // Ketuk foto live -> putar klip videonya.
+                            item.setOnClickListener(v ->
+                                    new com.hozinking.notes.ui.dialog
+                                            .LivePhotoViewerDialog(
+                                            EditorActivity.this, img, stillBytes)
+                                            .show());
+                        }
                     });
                 });
                 item.findViewById(R.id.btn_remove)

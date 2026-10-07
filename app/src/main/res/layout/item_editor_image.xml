@@ -20,4 +20,22 @@
         android:contentDescription="@string/delete"
         android:src="@drawable/ic_close" />
 
+    <!-- Badge penanda foto live. -->
+    <TextView
+        android:id="@+id/live_badge"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="4dp"
+        android:background="@drawable/badge_live"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:text="LIVE"
+        android:textColor="#FFFFFF"
+        android:textSize="10sp"
+        android:textStyle="bold"
+        android:visibility="gone" />
+
 </FrameLayout>
