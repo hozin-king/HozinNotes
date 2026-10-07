@@ -56,6 +56,8 @@ public class LivePhotoViewerDialog {
 
         videoView = dialog.findViewById(R.id.video);
         btnPlay = dialog.findViewById(R.id.btn_play);
+        // Autoplay langsung — tombol play besar tidak dipakai lagi.
+        btnPlay.setVisibility(android.view.View.GONE);
         TextView status = dialog.findViewById(R.id.live_status);
 
         dialog.findViewById(R.id.btn_close).setOnClickListener(v -> dismiss());
@@ -71,10 +73,22 @@ public class LivePhotoViewerDialog {
             }
         }
 
-        btnPlay.setOnClickListener(v -> playVideo(status));
-        videoView.setOnCompletionListener(mp -> {
-            btnPlay.setVisibility(android.view.View.VISIBLE);
-            status.setText(ctx.getString(R.string.live_tap_replay));
+        // Autoplay langsung saat video siap: loop + bisu, transisi mulus
+        // dari still (background) ke frame pertama video.
+        videoView.setOnPreparedListener(mp -> {
+            try {
+                mp.setLooping(true);
+                mp.setVolume(0f, 0f);
+            } catch (Exception ignored) {
+            }
+            videoView.setBackground(null);
+            btnPlay.setVisibility(android.view.View.GONE);
+            status.setText("");
+            videoView.start();
+        });
+        videoView.setOnErrorListener((mp, what, extra) -> {
+            status.setText(ctx.getString(R.string.live_error));
+            return true;
         });
         videoView.setOnClickListener(v -> {
             if (videoView.isPlaying()) videoView.pause();
@@ -102,22 +116,12 @@ public class LivePhotoViewerDialog {
                     out.write(bytes);
                     out.close();
                     videoView.setVideoPath(tempVideo.getAbsolutePath());
-                    status.setText(ctx.getString(R.string.live_tap_play));
-                    // Auto-play sekali saat dibuka.
-                    playVideo(status);
+                    // Playback dimulai otomatis di onPrepared (loop + bisu).
                 } catch (Exception e) {
                     status.setText(ctx.getString(R.string.live_error));
                 }
             });
         });
-    }
-
-    private void playVideo(TextView status) {
-        if (tempVideo == null || !tempVideo.exists()) return;
-        videoView.setBackground(null);
-        btnPlay.setVisibility(android.view.View.GONE);
-        status.setText("");
-        videoView.start();
     }
 
     private void dismiss() {

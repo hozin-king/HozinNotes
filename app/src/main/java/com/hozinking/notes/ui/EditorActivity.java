@@ -1,6 +1,7 @@
 package com.hozinking.notes.ui;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -22,18 +23,24 @@ import android.text.style.StrikethroughSpan;
 import android.text.style.StyleSpan;
 import android.text.util.Linkify;
 import android.view.ActionMode;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.VideoView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -83,8 +90,13 @@ public class EditorActivity extends AppCompatActivity {
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<Intent> liveVideoLauncher;
-    private ActivityResultLauncher<String> convertVideoLauncher;
     private TextView imageHeader;
+
+    private PopupWindow livePreviewPopup;
+    private VideoView livePreviewVideo;
+    private File livePreviewTemp;
+    private final Handler livePressHandler = new Handler(Looper.getMainLooper());
+    private Runnable livePressRunnable;
 
     // Format toolbar (action mode seleksi)
     private static final int MENU_BOLD = 1101;
@@ -151,22 +163,6 @@ public class EditorActivity extends AppCompatActivity {
                                                         R.string.live_failed,
                                                         Toast.LENGTH_SHORT).show();
                                             }
-                                        })));
-                    }
-                });
-        convertVideoLauncher = registerForActivityResult(
-                new ActivityResultContracts.GetContent(), uri -> {
-                    if (uri != null) {
-                        Uri u = uri;
-                        withNoteId(id -> NoteRepository.get(this)
-                                .convertVideoToLivePhoto(this, id, u,
-                                        img -> main.post(() -> {
-                                            refreshImages();
-                                            Toast.makeText(this,
-                                                    img != null
-                                                            ? R.string.live_converted
-                                                            : R.string.live_convert_failed,
-                                                    Toast.LENGTH_SHORT).show();
                                         })));
                     }
                 });
@@ -282,6 +278,7 @@ public class EditorActivity extends AppCompatActivity {
     protected void onPause() {
         saveHandler.removeCallbacks(saveRunnable);
         saveNow();
+        dismissLivePreview();
         com.hozinking.notes.widget.NoteWidgetProvider.refreshAll(this);
         super.onPause();
     }
@@ -876,15 +873,6 @@ public class EditorActivity extends AppCompatActivity {
     }
 
     /**
-     * Konversi video yang sudah ada menjadi Foto Live: pilih video dari
-     * galeri, potong klip ~3 detik + 1 frame still, simpan sebagai
-     * pasangan live photo baru di note ini.
-     */
-    private void launchConvertVideo() {
-        convertVideoLauncher.launch("video/*");
-    }
-
-    /**
      * Foto Live: rekam video ~3 detik via kamera sistem, 1 frame tengah
      * jadi foto still. Disimpan terenkripsi sebagai pasangan still+video.
      */
@@ -998,13 +986,136 @@ public class EditorActivity extends AppCompatActivity {
 
     private void bindLiveClick(View item, ImageRefEntity img, boolean isLive) {
         if (!isLive) return;
-        // Ketuk foto live -> muat still penuh lalu putar klip videonya.
+        // Tap: buka viewer yang langsung autoplay klip geraknya (loop, muted).
         item.setOnClickListener(v ->
                 NoteRepository.get(this).loadImagePlain(img, bytes ->
                         main.post(() -> new com.hozinking.notes.ui.dialog
                                 .LivePhotoViewerDialog(
                                 EditorActivity.this, img, bytes)
                                 .show())));
+        // Tahan: preview inline — popup kecil muter klip (muted, loop).
+        // Lepas: popup tutup, kembali ke still.
+        item.setOnTouchListener((v, event) -> {
+            int a = event.getActionMasked();
+            if (a == MotionEvent.ACTION_DOWN) {
+                cancelLivePress();
+                livePressRunnable = () -> showLivePreview(v, img);
+                livePressHandler.postDelayed(livePressRunnable,
+                        ViewConfiguration.getLongPressTimeout());
+            } else if (a == MotionEvent.ACTION_UP
+                    || a == MotionEvent.ACTION_CANCEL) {
+                cancelLivePress();
+                dismissLivePreview();
+            }
+            return false; // teruskan event agar tap tetap jalan
+        });
+    }
+
+    private void cancelLivePress() {
+        livePressHandler.removeCallbacksAndMessages(null);
+        livePressRunnable = null;
+    }
+
+    /**
+     * Preview inline Foto Live: popup kecil di tengah layar yang langsung
+     * memutar klip (muted + loop). Dipanggil setelah thumbnail ditahan
+     * selama long-press timeout.
+     */
+    private void showLivePreview(View anchor, ImageRefEntity img) {
+        dismissLivePreview();
+        Context ctx = anchor.getContext();
+        float d = ctx.getResources().getDisplayMetrics().density;
+        int size = (int) (280 * d);
+
+        FrameLayout frame = new FrameLayout(ctx);
+        frame.setBackgroundResource(R.drawable.bg_dialog_card);
+        int pad = (int) (10 * d);
+        frame.setPadding(pad, pad, pad, pad);
+
+        livePreviewVideo = new VideoView(ctx);
+        livePreviewVideo.setLayoutParams(new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
+        frame.addView(livePreviewVideo);
+
+        TextView badge = new TextView(ctx);
+        badge.setText("LIVE");
+        badge.setTextColor(0xFFFFFFFF);
+        badge.setTextSize(10);
+        badge.setTypeface(Typeface.DEFAULT_BOLD);
+        badge.setBackgroundResource(R.drawable.badge_live);
+        int bp = (int) (6 * d);
+        int bpt = (int) (2 * d);
+        badge.setPadding(bp, bpt, bp, bpt);
+        FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.START);
+        int m = (int) (8 * d);
+        blp.setMargins(m, m, m, m);
+        badge.setLayoutParams(blp);
+        frame.addView(badge);
+
+        livePreviewPopup = new PopupWindow(frame, size, size, false);
+        livePreviewPopup.showAtLocation(anchor, Gravity.CENTER, 0, 0);
+
+        livePreviewVideo.setOnPreparedListener(mp -> {
+            try {
+                mp.setLooping(true);
+                mp.setVolume(0f, 0f);
+            } catch (Exception ignored) {
+            }
+            if (livePreviewVideo != null) livePreviewVideo.start();
+        });
+        livePreviewVideo.setOnErrorListener((mp, what, extra) -> {
+            dismissLivePreview();
+            return true;
+        });
+
+        NoteRepository.get(ctx).loadLiveVideoPlain(img, bytes ->
+                main.post(() -> {
+                    if (livePreviewPopup == null || bytes == null) {
+                        dismissLivePreview();
+                        return;
+                    }
+                    try {
+                        File dir = new File(getCacheDir(), "liveprev");
+                        //noinspection ResultOfMethodCallIgnored
+                        dir.mkdirs();
+                        livePreviewTemp = new File(dir,
+                                "prev_" + img.id + ".mp4");
+                        java.io.FileOutputStream out =
+                                new java.io.FileOutputStream(livePreviewTemp);
+                        out.write(bytes);
+                        out.close();
+                        if (livePreviewVideo != null) {
+                            livePreviewVideo.setVideoPath(
+                                    livePreviewTemp.getAbsolutePath());
+                        }
+                    } catch (Exception e) {
+                        dismissLivePreview();
+                    }
+                }));
+    }
+
+    private void dismissLivePreview() {
+        try {
+            if (livePreviewVideo != null) livePreviewVideo.stopPlayback();
+        } catch (Exception ignored) {
+        }
+        livePreviewVideo = null;
+        if (livePreviewPopup != null) {
+            try {
+                livePreviewPopup.dismiss();
+            } catch (Exception ignored) {
+            }
+            livePreviewPopup = null;
+        }
+        if (livePreviewTemp != null) {
+            //noinspection ResultOfMethodCallIgnored
+            livePreviewTemp.delete();
+            livePreviewTemp = null;
+        }
     }
 
     private void confirmRemoveImage(ImageRefEntity img) {
@@ -1040,7 +1151,6 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
-                .addItem(getString(R.string.live_convert), this::launchConvertVideo)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
                 .addItem(getString(note.locked ? R.string.note_unlock : R.string.note_lock),
                         this::toggleNoteLock)

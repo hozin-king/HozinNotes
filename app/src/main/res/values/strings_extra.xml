@@ -139,12 +139,7 @@
     <string name="live_photo_title">Foto Live</string>
     <string name="live_saved">Foto live tersimpan</string>
     <string name="live_failed">Gagal menyimpan foto live</string>
-    <string name="live_convert">🎬 Konversi ke Foto Live</string>
-    <string name="live_converted">Dikonversi ke Foto Live</string>
-    <string name="live_convert_failed">Gagal mengonversi video</string>
     <string name="live_play">Putar</string>
-    <string name="live_tap_play">Ketuk putar untuk melihat klip video</string>
-    <string name="live_tap_replay">Ketuk untuk memutar ulang</string>
     <string name="live_loading">Memuat video…</string>
     <string name="live_error">Video tidak dapat dimuat</string>
     <string name="live_count">📷 %1$d foto live</string>
