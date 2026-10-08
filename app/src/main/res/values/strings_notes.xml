@@ -8,6 +8,11 @@
     <string name="notes_menu_more">⋯</string>
     <string name="editor_undo">Urungkan</string>
     <string name="editor_redo">Ulangi</string>
+    <string name="editor_find_in_note">Cari dalam catatan</string>
+    <string name="editor_find_hint">Cari…</string>
+    <string name="editor_find_count">%1$d/%2$d</string>
+    <string name="editor_word_count">%1$d kata</string>
+    <string name="share_received">Diterima dari aplikasi lain</string>
 
     <!-- Content descriptions -->
     <string name="notes_search_cd">Cari</string>

@@ -31,8 +31,20 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.EditorActivity" android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ui.EditorActivity" android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <!-- Terima teks/gambar yang di-share dari aplikasi lain -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="image/*" />
+            </intent-filter>
+        </activity>
         <activity android:name=".ui.ImageViewerActivity" android:exported="false" />
         <activity android:name=".ui.SearchActivity" android:exported="false"
             android:windowSoftInputMode="adjustResize|stateVisible" />

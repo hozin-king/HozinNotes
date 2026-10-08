@@ -36,6 +36,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
+import android.widget.ScrollView;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -111,6 +112,24 @@ public class EditorActivity extends AppCompatActivity {
     private float tapX, tapY;
     private long tapT;
 
+    // Cari dalam catatan
+    private ScrollView editorScroll;
+    private LinearLayout findBar;
+    private EditText findInput;
+    private TextView findCount;
+    private TextView wordCountView;
+    private final List<int[]> findMatches = new ArrayList<>();
+    private int findIndex = -1;
+    private static final int FIND_MATCH_COLOR = 0x66FFEB3B;
+    private static final int FIND_CURRENT_COLOR = 0xFFFF9800;
+
+    /** Span khusus highlight hasil pencarian — selalu dibersihkan sebelum simpan. */
+    private static class FindSpan extends BackgroundColorSpan {
+        FindSpan(int color) {
+            super(color);
+        }
+    }
+
     // List bernomor otomatis
     private boolean numGuard = false;
     private int pendingNl = -1;
@@ -168,7 +187,11 @@ public class EditorActivity extends AppCompatActivity {
                     }
                 });
 
-        SimpleTextWatcher watcher = new SimpleTextWatcher(s -> scheduleSave());
+        SimpleTextWatcher watcher = new SimpleTextWatcher(s -> {
+            scheduleSave();
+            updateWordCount();
+            if (findBar != null && findBar.getVisibility() == View.VISIBLE) runFind();
+        });
         titleInput.addTextChangedListener(watcher);
         contentInput.addTextChangedListener(watcher);
 
@@ -183,6 +206,18 @@ public class EditorActivity extends AppCompatActivity {
         findViewById(R.id.btn_camera).setOnClickListener(v -> launchCamera());
         findViewById(R.id.btn_live).setOnClickListener(v -> launchLivePhoto());
         findViewById(R.id.btn_menu).setOnClickListener(v -> showMenu());
+
+        // Bar cari dalam catatan + penghitung kata
+        editorScroll = findViewById(R.id.editor_scroll);
+        findBar = findViewById(R.id.find_bar);
+        findInput = findViewById(R.id.find_input);
+        findCount = findViewById(R.id.find_count);
+        wordCountView = findViewById(R.id.word_count);
+        findInput.addTextChangedListener(new SimpleTextWatcher(s -> runFind()));
+        findViewById(R.id.btn_find_prev).setOnClickListener(v -> findStep(-1));
+        findViewById(R.id.btn_find_next).setOnClickListener(v -> findStep(1));
+        findViewById(R.id.btn_find_close).setOnClickListener(v -> hideFindBar());
+        updateWordCount();
 
         noteId = getIntent().getLongExtra("noteId", -1);
         if (noteId != -1) {
@@ -207,6 +242,9 @@ public class EditorActivity extends AppCompatActivity {
             undoRedo.setTracking(true);
             updateUndoRedoButtons();
         }
+
+        // Terima konten yang di-share dari aplikasi lain (ACTION_SEND).
+        handleSharedContent(getIntent());
     }
 
     private NoteEntity newNote() {
@@ -229,6 +267,10 @@ public class EditorActivity extends AppCompatActivity {
     }
 
     private void syncFieldsToNote() {
+        // Highlight pencarian tidak boleh ikut tersimpan ke DB/HTML.
+        boolean findVisible = findBar != null
+                && findBar.getVisibility() == View.VISIBLE;
+        clearFindHighlights();
         note.title = titleInput.getText().toString();
         Editable e = contentInput.getText();
         if (hasRichContent(e)) {
@@ -238,6 +280,7 @@ public class EditorActivity extends AppCompatActivity {
             note.contentHtml = false;
             note.content = e.toString();
         }
+        if (findVisible) runFind(); // gambar ulang highlight setelah simpan
     }
 
     private void saveNow() {
@@ -1166,6 +1209,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.notes_folder_title), this::showFolderSheet)
                 .addItem(getString(R.string.notes_tags_title), this::showTagsDialog)
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
+                .addItem(getString(R.string.editor_find_in_note), this::showFindBar)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
@@ -1183,6 +1227,151 @@ public class EditorActivity extends AppCompatActivity {
                 })
                 .addDestructive(getString(R.string.delete), this::confirmDelete)
                 .show();
+    }
+
+    // ---------- cari dalam catatan ----------
+
+    private void showFindBar() {
+        if (findBar.getVisibility() == View.VISIBLE) return;
+        findBar.setVisibility(View.VISIBLE);
+        findInput.setText("");
+        findInput.requestFocus();
+        android.view.inputmethod.InputMethodManager imm =
+                (android.view.inputmethod.InputMethodManager)
+                        getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) {
+            imm.showSoftInput(findInput,
+                    android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+        }
+    }
+
+    private void hideFindBar() {
+        findBar.setVisibility(View.GONE);
+        findInput.setText("");
+        clearFindHighlights();
+    }
+
+    private void clearFindHighlights() {
+        Editable e = contentInput.getText();
+        for (FindSpan sp : e.getSpans(0, e.length(), FindSpan.class)) {
+            e.removeSpan(sp);
+        }
+        findMatches.clear();
+        findIndex = -1;
+    }
+
+    private void runFind() {
+        clearFindHighlights();
+        String q = findInput.getText().toString();
+        if (q.isEmpty()) {
+            findCount.setText("");
+            return;
+        }
+        String lower = contentInput.getText().toString()
+                .toLowerCase(java.util.Locale.ROOT);
+        String ql = q.toLowerCase(java.util.Locale.ROOT);
+        int from = 0;
+        while (findMatches.size() < 500) {
+            int idx = lower.indexOf(ql, from);
+            if (idx < 0) break;
+            findMatches.add(new int[]{idx, idx + q.length()});
+            from = idx + q.length();
+        }
+        if (findMatches.isEmpty()) {
+            findCount.setText("0");
+            return;
+        }
+        findIndex = 0;
+        paintFindMatches();
+    }
+
+    private void paintFindMatches() {
+        Editable e = contentInput.getText();
+        for (FindSpan sp : e.getSpans(0, e.length(), FindSpan.class)) {
+            e.removeSpan(sp);
+        }
+        for (int i = 0; i < findMatches.size(); i++) {
+            int[] m = findMatches.get(i);
+            int color = (i == findIndex) ? FIND_CURRENT_COLOR : FIND_MATCH_COLOR;
+            e.setSpan(new FindSpan(color), m[0], m[1],
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        findCount.setText(getString(R.string.editor_find_count,
+                findIndex + 1, findMatches.size()));
+        scrollToFindMatch(findIndex);
+    }
+
+    private void findStep(int dir) {
+        if (findMatches.isEmpty()) return;
+        findIndex = (findIndex + dir + findMatches.size()) % findMatches.size();
+        paintFindMatches();
+    }
+
+    private void scrollToFindMatch(int i) {
+        if (i < 0 || i >= findMatches.size()) return;
+        int[] m = findMatches.get(i);
+        contentInput.requestFocus();
+        try {
+            contentInput.setSelection(m[0], m[1]);
+        } catch (Exception ignored) {
+        }
+        if (editorScroll != null && contentInput.getLayout() != null) {
+            int line = contentInput.getLayout().getLineForOffset(m[0]);
+            int y = contentInput.getTop()
+                    + contentInput.getLayout().getLineTop(line);
+            editorScroll.smoothScrollTo(0, Math.max(0, y - 200));
+        }
+    }
+
+    // ---------- penghitung kata ----------
+
+    private void updateWordCount() {
+        if (wordCountView == null) return;
+        String t = contentInput.getText().toString().trim();
+        int words = t.isEmpty() ? 0 : t.split("\\s+").length;
+        wordCountView.setText(getString(R.string.editor_word_count, words));
+    }
+
+    // ---------- terima share dari aplikasi lain ----------
+
+    /**
+     * ACTION_SEND (teks/gambar) dari aplikasi lain dijadikan catatan baru.
+     * Ide "share into" ala Markor; implementasi sendiri.
+     */
+    private void handleSharedContent(Intent intent) {
+        if (intent == null || note == null) return;
+        if (!Intent.ACTION_SEND.equals(intent.getAction())) return;
+        if (noteId != -1) return; // hanya untuk catatan baru
+        String type = intent.getType();
+        if (type == null) return;
+        if (type.startsWith("text/")) {
+            String subject = intent.getStringExtra(Intent.EXTRA_SUBJECT);
+            String text = intent.getStringExtra(Intent.EXTRA_TEXT);
+            if (!TextUtils.isEmpty(subject)) titleInput.setText(subject);
+            if (!TextUtils.isEmpty(text)) {
+                contentInput.setText(text);
+                try {
+                    contentInput.setSelection(text.length());
+                } catch (Exception ignored) {
+                }
+            }
+            if (!TextUtils.isEmpty(subject) || !TextUtils.isEmpty(text)) {
+                Toast.makeText(this, R.string.share_received,
+                        Toast.LENGTH_SHORT).show();
+            }
+        } else if (type.startsWith("image/")) {
+            Uri uri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+            if (uri != null) {
+                withNoteId(id -> NoteRepository.get(this)
+                        .addImageFromUri(this, id, uri,
+                                img -> main.post(() -> {
+                                    refreshImages();
+                                    Toast.makeText(this,
+                                            R.string.share_received,
+                                            Toast.LENGTH_SHORT).show();
+                                })));
+            }
+        }
     }
 
     // ---------- Bagikan & duplikat ----------
