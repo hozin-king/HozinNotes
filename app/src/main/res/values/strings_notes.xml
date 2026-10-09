@@ -94,6 +94,20 @@
     <string name="export_pdf">Ekspor PDF</string>
     <string name="pdf_error">Gagal membuat PDF</string>
 
+    <!-- Ekspor Markdown -->
+    <string name="export_md">Ekspor Markdown</string>
+    <string name="md_error">Gagal membuat Markdown</string>
+
+    <!-- Sematkan catatan di notifikasi -->
+    <string name="pin_notification">Sematkan di notifikasi</string>
+    <string name="unpin_notification">Lepas sematan</string>
+    <string name="pinned_notif_pinned">Catatan disematkan di notifikasi</string>
+    <string name="pinned_notif_unpinned">Sematan notifikasi dilepas</string>
+    <string name="pinned_notif_need_permission">Izinkan notifikasi dulu untuk menyematkan.</string>
+    <string name="pinned_notif_unpin">Lepas</string>
+    <string name="pinned_notif_channel_name">Catatan tersemat</string>
+    <string name="pinned_notif_channel_desc">Notifikasi persisten untuk catatan yang disematkan</string>
+
     <!-- Bagikan & duplikat -->
     <string name="duplicate">Duplikat</string>
     <string name="note_duplicated">Catatan diduplikat</string>

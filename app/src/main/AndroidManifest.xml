@@ -89,6 +89,14 @@
         </receiver>
 
         <receiver
+            android:name=".reminder.PinnedNoteReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.hozinking.notes.ACTION_UNPIN_NOTE" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
             android:name=".reminder.BootReceiver"
             android:exported="false">
             <intent-filter>

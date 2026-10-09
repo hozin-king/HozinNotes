@@ -1212,6 +1212,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.editor_find_in_note), this::showFindBar)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
+                .addItem(getString(R.string.export_md), this::exportMarkdown)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
                 .addItem(getString(note.locked ? R.string.note_unlock : R.string.note_lock),
                         this::toggleNoteLock)
@@ -1411,6 +1412,14 @@ public class EditorActivity extends AppCompatActivity {
         body = body.replaceAll("(?m)^\\s*- \\[ \\] ", "☐ ")
                 .replaceAll("(?m)^\\s*- \\[[xX]\\] ", "☑ ");
         PdfExporter.exportAndShare(this, title, body.trim());
+    }
+
+    /** Ekspor catatan ini menjadi Markdown (.md) lalu bagikan. */
+    private void exportMarkdown() {
+        if (note == null) return;
+        saveNow(); // sinkronkan field dulu
+        MarkdownExporter.exportAndShare(this, displayTitle(),
+                note.content == null ? "" : note.content, note.contentHtml);
     }
 
     /** Duplikat catatan ini (teks + tag + warna + folder). */

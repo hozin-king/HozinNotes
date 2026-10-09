@@ -22,6 +22,7 @@ import com.hozinking.notes.data.db.VaultDao;
 import com.hozinking.notes.data.db.VaultDatabase;
 import com.hozinking.notes.data.db.VaultImageEntity;
 import com.hozinking.notes.data.db.VaultNoteEntity;
+import com.hozinking.notes.reminder.PinnedNoteManager;
 import com.hozinking.notes.security.CryptoManager;
 import com.hozinking.notes.security.HashUtils;
 
@@ -119,6 +120,7 @@ public class NoteRepository {
     public void trashNote(long id, Cb<Void> cb) {
         io.execute(() -> {
             noteDao.trash(id, System.currentTimeMillis());
+            PinnedNoteManager.unpinIfPinned(appCtx, id);
             cb.onResult(null);
         });
     }
@@ -194,6 +196,7 @@ public class NoteRepository {
             }
             imageDao.deleteForNote(id);
             noteDao.deleteForever(id);
+            PinnedNoteManager.unpinIfPinned(appCtx, id);
             cb.onResult(null);
         });
     }

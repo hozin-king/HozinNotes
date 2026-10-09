@@ -6,11 +6,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Html;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.core.content.ContextCompat;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -35,6 +40,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.hozinking.notes.R;
 import com.hozinking.notes.data.db.NoteEntity;
 import com.hozinking.notes.data.repo.NoteRepository;
+import com.hozinking.notes.reminder.PinnedNoteManager;
 import com.hozinking.notes.ui.dialog.IosActionSheet;
 import com.hozinking.notes.ui.dialog.IosDialog;
 
@@ -58,6 +64,10 @@ public class NoteListFragment extends Fragment {
     private static final String PREFS = "notes_view_prefs";
     private static final String KEY_VIEW_MODE = "view_mode"; // grid | list
     private static final String KEY_SORT = "sort"; // newest | oldest | title | color
+
+    // Sematkan catatan di notifikasi (izin POST_NOTIFICATIONS API 33+).
+    private static final int RC_NOTIF_PIN = 3001;
+    private long pendingPinId = -1;
 
     /** PIN vault -> bila OK, buka Ruang Privat. Bila PIN belum ada, arahkan ke mode buat PIN. */
     private final ActivityResultLauncher<Intent> vaultLauncher =
@@ -351,6 +361,46 @@ public class NoteListFragment extends Fragment {
         }));
     }
 
+    /** Sematkan/lepas catatan sebagai notifikasi persisten (ala nproth/pin). */
+    private void togglePinnedNotification(NoteEntity n) {
+        if (PinnedNoteManager.isPinned(requireContext(), n.id)) {
+            PinnedNoteManager.unpin(requireContext());
+            Toast.makeText(requireContext(),
+                    R.string.pinned_notif_unpinned, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && ContextCompat.checkSelfPermission(requireContext(),
+                        Manifest.permission.POST_NOTIFICATIONS)
+                != PackageManager.PERMISSION_GRANTED) {
+            pendingPinId = n.id;
+            Toast.makeText(requireContext(),
+                    R.string.pinned_notif_need_permission, Toast.LENGTH_SHORT).show();
+            requestPermissions(
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, RC_NOTIF_PIN);
+            return;
+        }
+        PinnedNoteManager.pin(requireContext(), n.id);
+        Toast.makeText(requireContext(),
+                R.string.pinned_notif_pinned, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == RC_NOTIF_PIN) {
+            long id = pendingPinId;
+            pendingPinId = -1;
+            if (id > 0 && grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                PinnedNoteManager.pin(requireContext(), id);
+                Toast.makeText(requireContext(),
+                        R.string.pinned_notif_pinned, Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     private void showActions(NoteEntity n) {
         String title = (n.title == null || n.title.trim().isEmpty())
                 ? getString(R.string.notes_no_title) : n.title.trim();
@@ -360,6 +410,9 @@ public class NoteListFragment extends Fragment {
                         () -> { n.pinned = !n.pinned; persist(n); })
                 .addItem(getString(R.string.archive),
                         () -> { n.archived = true; persist(n); })
+                .addItem(getString(PinnedNoteManager.isPinned(requireContext(), n.id)
+                                ? R.string.unpin_notification : R.string.pin_notification),
+                        () -> togglePinnedNotification(n))
                 .addItem(getString(R.string.share), () -> shareNoteFull(n))
                 .addItem(getString(R.string.duplicate), () -> duplicateNote(n))
                 .addItem(getString(R.string.notes_color_title), () -> showColorSheet(n))
