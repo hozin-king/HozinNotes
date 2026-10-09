@@ -12,9 +12,13 @@ public final class ChatConfig {
     private ChatConfig() {
     }
 
-    /** Ganti dengan URL worker hasil `wrangler deploy`. */
+    /**
+     * URL dasar backend chat. Sejak 2026-10-09 backend chat acak digabung ke
+     * worker hozinwate-web di hozinking.my.id (satu server).
+     * Path API: {baseUrl}/api/identify, /api/match, /api/send, dst.
+     */
     public static final String DEFAULT_BASE_URL =
-            "https://hozin-chat.muchammadhozin.workers.dev";
+            "https://hozinking.my.id/chat";
 
     public static String baseUrl(android.content.Context ctx) {
         String custom = ctx.getSharedPreferences("chat", android.content.Context.MODE_PRIVATE)
