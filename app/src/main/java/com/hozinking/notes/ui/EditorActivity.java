@@ -237,6 +237,9 @@ public class EditorActivity extends AppCompatActivity {
             }));
         } else {
             note = newNote();
+            // Template dari tahan-tombol + FAB — hanya saat pertama dibuat,
+            // bukan saat recreate (rotasi) agar tidak menimpa ketikan user.
+            if (savedInstanceState == null) applyTemplateExtras();
             loading = false;
             undoRedo.clear();
             undoRedo.setTracking(true);
@@ -256,6 +259,21 @@ public class EditorActivity extends AppCompatActivity {
         n.createdAt = now;
         n.updatedAt = now;
         return n;
+    }
+
+    /** Isi judul/isi dari template (extra "templateTitle"/"templateContent"). */
+    private void applyTemplateExtras() {
+        String t = getIntent().getStringExtra("templateTitle");
+        String c = getIntent().getStringExtra("templateContent");
+        if (t == null && c == null) return;
+        if (t != null) {
+            note.title = t;
+            titleInput.setText(t);
+        }
+        if (c != null) {
+            note.content = c;
+            contentInput.setText(c);
+        }
     }
 
     // ---------- auto-save ----------
@@ -522,6 +540,87 @@ public class EditorActivity extends AppCompatActivity {
         }
         ed.replace(lineStart, end, next);
         scheduleSave();
+    }
+
+    // ---------- aksi checklist massal ----------
+    // Terinspirasi aksi task-list NotallyX ("remove checked", "sort checked to end") —
+    // implementasi sendiri murni manipulasi teks, tanpa dependensi baru.
+
+    private static int firstNonSpace(String line) {
+        int i = 0;
+        while (i < line.length()
+                && (line.charAt(i) == ' ' || line.charAt(i) == '\t')) i++;
+        return i;
+    }
+
+    private static boolean isChecklistLine(String line) {
+        String t = line.substring(firstNonSpace(line));
+        return t.startsWith("- [ ]") || t.startsWith("- [x]");
+    }
+
+    private static boolean isCheckedLine(String line) {
+        return line.substring(firstNonSpace(line)).startsWith("- [x]");
+    }
+
+    /** Dalam tiap blok checklist berurutan, pindahkan item yang dicentang ke bawah. */
+    private void sortCheckedToBottom() {
+        String s = contentInput.getText().toString();
+        if (!s.contains("[x]")) {
+            Toast.makeText(this, R.string.checklist_none_checked, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] lines = s.split("\n", -1);
+        StringBuilder out = new StringBuilder(s.length());
+        List<String> unchecked = new ArrayList<>();
+        List<String> checked = new ArrayList<>();
+        for (int i = 0; i <= lines.length; i++) {
+            String line = i < lines.length ? lines[i] : null;
+            if (line != null && isChecklistLine(line)) {
+                (isCheckedLine(line) ? checked : unchecked).add(line);
+                continue;
+            }
+            for (String l : unchecked) out.append(l).append('\n');
+            for (String l : checked) out.append(l).append('\n');
+            unchecked.clear();
+            checked.clear();
+            if (line != null) out.append(line).append('\n');
+        }
+        if (out.length() > 0) out.setLength(out.length() - 1);
+        String next = out.toString();
+        if (next.equals(s)) {
+            Toast.makeText(this, R.string.checklist_none_checked, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        contentInput.getText().replace(0, contentInput.length(), next);
+        scheduleSave();
+    }
+
+    /** Hapus semua baris checklist yang sudah dicentang. Bisa di-undo. */
+    private void clearCheckedItems() {
+        String s = contentInput.getText().toString();
+        if (!s.contains("[x]")) {
+            Toast.makeText(this, R.string.checklist_none_checked, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] lines = s.split("\n", -1);
+        StringBuilder out = new StringBuilder(s.length());
+        int removed = 0;
+        for (String line : lines) {
+            if (isChecklistLine(line) && isCheckedLine(line)) {
+                removed++;
+                continue;
+            }
+            if (out.length() > 0) out.append('\n');
+            out.append(line);
+        }
+        if (removed == 0) {
+            Toast.makeText(this, R.string.checklist_none_checked, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        contentInput.getText().replace(0, contentInput.length(), out.toString());
+        scheduleSave();
+        Toast.makeText(this, getString(R.string.checklist_cleared, removed),
+                Toast.LENGTH_SHORT).show();
     }
 
     // ---------- list bernomor otomatis ----------
@@ -1214,6 +1313,8 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.export_md), this::exportMarkdown)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
+                .addItem(getString(R.string.checklist_sort_checked), this::sortCheckedToBottom)
+                .addItem(getString(R.string.checklist_clear_checked), this::clearCheckedItems)
                 .addItem(getString(note.locked ? R.string.note_unlock : R.string.note_lock),
                         this::toggleNoteLock)
                 .addItem(reminderLabel, this::showReminderDialog)

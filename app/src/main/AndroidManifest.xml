@@ -116,5 +116,17 @@
                 android:resource="@xml/note_widget_info" />
         </receiver>
 
+        <!-- Quick Settings Tile: buka editor catatan baru dari mana saja -->
+        <service
+            android:name=".ui.QuickNoteTile"
+            android:exported="true"
+            android:icon="@drawable/ic_add"
+            android:label="@string/tile_quick_note"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 </manifest>

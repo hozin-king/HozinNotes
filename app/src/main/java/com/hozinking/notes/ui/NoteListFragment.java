@@ -138,6 +138,11 @@ public class NoteListFragment extends Fragment {
                         .show());
         FloatingActionButton fab = v.findViewById(R.id.fab);
         fab.setOnClickListener(x -> openEditor(-1));
+        // Tahan tombol + untuk memilih template catatan (pola umum aplikasi catatan).
+        fab.setOnLongClickListener(x -> {
+            showTemplateSheet();
+            return true;
+        });
 
         // Geser kanan = hapus (ke sampah), geser kiri = arsipkan. Keduanya bisa di-undo.
         new ItemTouchHelper(new ItemTouchHelper.SimpleCallback(0,
@@ -178,6 +183,34 @@ public class NoteListFragment extends Fragment {
     private void openEditor(long id) {
         Intent i = new Intent(requireContext(), EditorActivity.class);
         i.putExtra("noteId", id);
+        startActivity(i);
+    }
+
+    /** Sheet pilihan template — inspirasi pola quick-capture aplikasi catatan populer. */
+    private void showTemplateSheet() {
+        String today = new java.text.SimpleDateFormat("d MMM yyyy",
+                new java.util.Locale("id")).format(new java.util.Date());
+        new IosActionSheet(requireContext())
+                .setTitle(getString(R.string.template_title))
+                .addItem(getString(R.string.template_blank), () -> openEditor(-1))
+                .addItem(getString(R.string.template_shopping), () ->
+                        openEditorWithTemplate(getString(R.string.template_shopping),
+                                "- [ ] \n- [ ] \n- [ ] "))
+                .addItem(getString(R.string.template_meeting), () ->
+                        openEditorWithTemplate(getString(R.string.template_meeting),
+                                "Tanggal: " + today + "\nPeserta: \n\nAgenda:\n- \n\n"
+                                        + "Keputusan:\n- \n\nTindak lanjut:\n- [ ] "))
+                .addItem(getString(R.string.template_journal), () ->
+                        openEditorWithTemplate("Jurnal \u2014 " + today,
+                                today + "\n\n"))
+                .show();
+    }
+
+    private void openEditorWithTemplate(String title, String content) {
+        Intent i = new Intent(requireContext(), EditorActivity.class);
+        i.putExtra("noteId", -1L);
+        i.putExtra("templateTitle", title);
+        i.putExtra("templateContent", content);
         startActivity(i);
     }
 

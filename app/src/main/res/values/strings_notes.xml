@@ -114,4 +114,20 @@
     <string name="duplicate_need_save">Simpan dulu catatannya sebelum diduplikat.</string>
     <string name="duplicate_failed">Gagal menduplikat catatan</string>
     <string name="archived_undo">Catatan diarsipkan</string>
+
+    <!-- Template catatan baru -->
+    <string name="template_title">Catatan baru dari template</string>
+    <string name="template_blank">Catatan kosong</string>
+    <string name="template_shopping">Daftar belanja</string>
+    <string name="template_meeting">Notulen rapat</string>
+    <string name="template_journal">Jurnal harian</string>
+
+    <!-- Aksi checklist -->
+    <string name="checklist_sort_checked">Pindahkan yang dicentang ke bawah</string>
+    <string name="checklist_clear_checked">Hapus yang sudah dicentang</string>
+    <string name="checklist_none_checked">Tidak ada item yang dicentang</string>
+    <string name="checklist_cleared">%1$d item yang dicentang dihapus</string>
+
+    <!-- Quick Settings Tile -->
+    <string name="tile_quick_note">Catatan cepat</string>
 </resources>
