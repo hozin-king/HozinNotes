@@ -669,9 +669,12 @@ public class SettingsActivity extends AppCompatActivity {
 
     // ---------- Statistik: helper ----------
 
+    private interface Getter<T> {
+        void get(com.hozinking.notes.data.repo.NoteRepository.Cb<T> cb);
+    }
+
     /** Tunggu callback repo secara sinkron (maks 30 dtk); null bila timeout. */
-    private static <T> T block(
-            com.hozinking.notes.data.repo.NoteRepository.Cb<T> g) {
+    private static <T> T block(Getter<T> g) {
         final Object[] box = new Object[1];
         java.util.concurrent.CountDownLatch latch =
                 new java.util.concurrent.CountDownLatch(1);
