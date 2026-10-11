@@ -10,9 +10,9 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.hozinking.notes.R;
+import com.hozinking.notes.chat.ChatActivity;
 import com.hozinking.notes.chat.ChatIdentity;
 import com.hozinking.notes.chat.LoginActivity;
-import com.hozinking.notes.chat.RandomMatchActivity;
 import com.hozinking.notes.ui.mindmap.MindmapActivity;
 
 /**
@@ -95,8 +95,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void openChat() {
-        Class<?> dest = ChatIdentity.hasName(this)
-                ? RandomMatchActivity.class : LoginActivity.class;
-        startActivity(new Intent(this, dest));
+        if (!ChatIdentity.hasName(this)) {
+            startActivity(new Intent(this, LoginActivity.class));
+            return;
+        }
+        // Satu ruang ngobrol global untuk semua user (tanpa matchmaking).
+        Intent i = new Intent(this, ChatActivity.class);
+        i.putExtra("chatId", ChatActivity.GLOBAL_ROOM);
+        startActivity(i);
     }
 }

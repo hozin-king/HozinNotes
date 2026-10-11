@@ -56,12 +56,15 @@ public final class WorkerChatClient {
     public static class ChatMessage {
         public final long id;
         public final String fromId;
+        public final String fromName;
         public final String text;
         public final long ts;
 
-        public ChatMessage(long id, String fromId, String text, long ts) {
+        public ChatMessage(long id, String fromId, String fromName,
+                           String text, long ts) {
             this.id = id;
             this.fromId = fromId;
+            this.fromName = fromName;
             this.text = text;
             this.ts = ts;
         }
@@ -144,6 +147,26 @@ public final class WorkerChatClient {
         }
     }
 
+    /** Tandai user sedang online (ruang global). Best-effort: gagal diabaikan. */
+    public static void ping(Context ctx, String userId) {
+        try {
+            JSONObject body = new JSONObject();
+            body.put("userId", userId);
+            request(ctx, "POST", "/api/ping", body);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** Jumlah user yang online dalam 2 menit terakhir. -1 bila gagal. */
+    public static int onlineCount(Context ctx) {
+        try {
+            JSONObject res = request(ctx, "GET", "/api/online", null);
+            return res.optInt("online", -1);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
     public static MatchResult match(Context ctx, String userId) throws ChatException {
         try {
             JSONObject body = new JSONObject();
@@ -203,6 +226,7 @@ public final class WorkerChatClient {
                     out.add(new ChatMessage(
                             m.optLong("id", 0),
                             m.optString("fromId", ""),
+                            m.optString("fromName", ""),
                             m.optString("text", ""),
                             m.optLong("ts", 0)));
                 }

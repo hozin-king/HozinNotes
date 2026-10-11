@@ -26,7 +26,7 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         if (ChatIdentity.hasName(this)) {
-            goToMatch();
+            goToRoom();
             return;
         }
 
@@ -48,7 +48,7 @@ public class LoginActivity extends AppCompatActivity {
                 try {
                     WorkerChatClient.identify(this, uid, name);
                     ChatIdentity.setName(this, name);
-                    runOnUiThread(this::goToMatch);
+                    runOnUiThread(this::goToRoom);
                 } catch (WorkerChatClient.ChatException e) {
                     runOnUiThread(() -> {
                         btnStart.setEnabled(true);
@@ -60,8 +60,10 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private void goToMatch() {
-        startActivity(new Intent(this, RandomMatchActivity.class));
+    private void goToRoom() {
+        Intent i = new Intent(this, ChatActivity.class);
+        i.putExtra("chatId", ChatActivity.GLOBAL_ROOM);
+        startActivity(i);
         finish();
     }
 

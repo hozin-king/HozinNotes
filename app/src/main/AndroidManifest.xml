@@ -61,7 +61,6 @@
         <activity android:name=".ui.mindmap.MindmapActivity" android:exported="false" />
 
         <activity android:name=".chat.LoginActivity" android:exported="false" />
-        <activity android:name=".chat.RandomMatchActivity" android:exported="false" />
         <activity android:name=".chat.ChatActivity" android:exported="false" />
 
         <provider
