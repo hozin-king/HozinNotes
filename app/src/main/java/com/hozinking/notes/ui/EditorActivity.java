@@ -1,11 +1,15 @@
 package com.hozinking.notes.ui;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
+import android.media.MediaPlayer;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -33,6 +37,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
@@ -52,6 +57,7 @@ import androidx.core.content.FileProvider;
 
 import com.hozinking.notes.BuildConfig;
 import com.hozinking.notes.R;
+import com.hozinking.notes.data.db.AudioRefEntity;
 import com.hozinking.notes.data.db.FolderEntity;
 import com.hozinking.notes.data.db.ImageRefEntity;
 import com.hozinking.notes.data.db.NoteEntity;
@@ -61,8 +67,10 @@ import com.hozinking.notes.ui.dialog.IosActionSheet;
 import com.hozinking.notes.ui.dialog.IosDialog;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Editor catatan. Extra "noteId" (long, -1 = baru).
@@ -93,6 +101,20 @@ public class EditorActivity extends AppCompatActivity {
     private ActivityResultLauncher<Intent> liveVideoLauncher;
     private ActivityResultLauncher<Intent> viewerLauncher;
     private TextView imageHeader;
+
+    // Rekaman suara (audio notes)
+    private LinearLayout audioList;
+    private TextView audioHeader;
+    private TextView audioBtnLabel;
+    private ActivityResultLauncher<String> audioPermLauncher;
+    private MediaRecorder recorder;
+    private File recTempFile;
+    private long recStartMs;
+    private long recNoteId = -1;
+    private MediaPlayer player;
+    private AudioRefEntity playingRef;
+    private ImageButton playingBtn;
+    private File playTempFile;
 
     private PopupWindow livePreviewPopup;
     private VideoView livePreviewVideo;
@@ -207,6 +229,21 @@ public class EditorActivity extends AppCompatActivity {
         findViewById(R.id.btn_live).setOnClickListener(v -> launchLivePhoto());
         findViewById(R.id.btn_menu).setOnClickListener(v -> showMenu());
 
+        // Rekaman suara: tombol toolbar + daftar rekaman di bawah strip gambar.
+        audioList = findViewById(R.id.audio_list);
+        audioHeader = findViewById(R.id.audio_header);
+        audioBtnLabel = findViewById(R.id.tv_audio);
+        audioPermLauncher = registerForActivityResult(
+                new ActivityResultContracts.RequestPermission(), granted -> {
+                    if (Boolean.TRUE.equals(granted)) {
+                        startRecording();
+                    } else {
+                        Toast.makeText(this, R.string.audio_perm_denied,
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+        findViewById(R.id.btn_audio).setOnClickListener(v -> onAudioButton());
+
         // Bar cari dalam catatan + penghitung kata
         editorScroll = findViewById(R.id.editor_scroll);
         findBar = findViewById(R.id.find_bar);
@@ -234,6 +271,7 @@ public class EditorActivity extends AppCompatActivity {
                 undoRedo.setTracking(true);
                 updateUndoRedoButtons();
                 refreshImages();
+                refreshAudio();
             }));
         } else {
             note = newNote();
@@ -340,6 +378,11 @@ public class EditorActivity extends AppCompatActivity {
     protected void onPause() {
         saveHandler.removeCallbacks(saveRunnable);
         saveNow();
+        if (recorder != null) {
+            // Jangan biarkan rekaman jalan saat activity tidak terlihat.
+            stopRecording();
+        }
+        stopPlayback();
         dismissLivePreview();
         com.hozinking.notes.widget.NoteWidgetProvider.refreshAll(this);
         super.onPause();
@@ -1286,6 +1329,223 @@ public class EditorActivity extends AppCompatActivity {
                 .setNegative(getString(R.string.cancel), () -> {
                 })
                 .show();
+    }
+
+    // ---------- Rekaman suara (audio notes) ----------
+
+    /** Tombol toolbar: mulai / hentikan perekaman. */
+    private void onAudioButton() {
+        if (recorder != null) {
+            stopRecording();
+            return;
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
+                == PackageManager.PERMISSION_GRANTED) {
+            startRecording();
+        } else {
+            audioPermLauncher.launch(Manifest.permission.RECORD_AUDIO);
+        }
+    }
+
+    /** Mulai merekam (AAC .m4a ke file temp di cache). */
+    private void startRecording() {
+        withNoteId(id -> {
+            try {
+                stopPlayback();
+                File tmp = new File(getCacheDir(),
+                        "rec_" + System.currentTimeMillis() + ".m4a");
+                MediaRecorder mr = new MediaRecorder();
+                mr.setAudioSource(MediaRecorder.AudioSource.MIC);
+                mr.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+                mr.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+                mr.setOutputFile(tmp.getAbsolutePath());
+                mr.prepare();
+                mr.start();
+                recorder = mr;
+                recTempFile = tmp;
+                recStartMs = System.currentTimeMillis();
+                recNoteId = id;
+                audioBtnLabel.setText(R.string.audio_recording);
+            } catch (Exception e) {
+                cleanupRecorder();
+                Toast.makeText(this, R.string.audio_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    /** Hentikan perekaman; simpan bila durasi >= 1 detik. */
+    private void stopRecording() {
+        MediaRecorder mr = recorder;
+        cleanupRecorder();
+        audioBtnLabel.setText(R.string.audio_record);
+        if (mr == null) return;
+        long duration = System.currentTimeMillis() - recStartMs;
+        try {
+            mr.stop();
+        } catch (Exception ignored) {
+        }
+        try {
+            mr.release();
+        } catch (Exception ignored) {
+        }
+        File tmp = recTempFile;
+        recTempFile = null;
+        if (duration < 1000 || tmp == null) {
+            if (tmp != null) tmp.delete();
+            Toast.makeText(this, R.string.audio_too_short, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        long nid = recNoteId;
+        NoteRepository.get(this).saveAudioRecording(nid, tmp, duration, ref ->
+                main.post(() -> {
+                    if (ref != null) {
+                        refreshAudio();
+                        Toast.makeText(this, R.string.audio_saved,
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(this, R.string.audio_failed,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }));
+    }
+
+    private void cleanupRecorder() {
+        recorder = null;
+    }
+
+    /** Muat ulang daftar rekaman suara milik catatan ini. */
+    private void refreshAudio() {
+        if (audioList == null) return;
+        if (noteId == -1 || note == null) {
+            audioList.removeAllViews();
+            audioHeader.setVisibility(View.GONE);
+            return;
+        }
+        NoteRepository.get(this).getAudioRefs(noteId, list -> main.post(() -> {
+            stopPlayback();
+            audioList.removeAllViews();
+            if (list == null || list.isEmpty()) {
+                audioHeader.setVisibility(View.GONE);
+                return;
+            }
+            audioHeader.setVisibility(View.VISIBLE);
+            audioHeader.setText(
+                    getString(R.string.audio_recordings_header, list.size()));
+            for (AudioRefEntity a : list) {
+                View item = getLayoutInflater()
+                        .inflate(R.layout.item_editor_audio, audioList, false);
+                ImageButton btnPlay = item.findViewById(R.id.btn_play);
+                TextView tvDur = item.findViewById(R.id.tv_duration);
+                tvDur.setText(formatDuration(a.durationMs));
+                btnPlay.setOnClickListener(v -> togglePlay(a, btnPlay));
+                item.findViewById(R.id.btn_remove)
+                        .setOnClickListener(x -> confirmRemoveAudio(a));
+                audioList.addView(item);
+            }
+        }));
+    }
+
+    /** Putar / jeda satu rekaman. Dekripsi ke file temp, putar via MediaPlayer. */
+    private void togglePlay(AudioRefEntity a, ImageButton btn) {
+        if (playingRef != null && playingRef.id == a.id) {
+            stopPlayback();
+            return;
+        }
+        stopPlayback();
+        NoteRepository.get(this).loadAudioPlain(a, bytes -> main.post(() -> {
+            if (bytes == null || bytes.length == 0) {
+                Toast.makeText(this, R.string.audio_play_failed,
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+            try {
+                cleanupPlayTemp();
+                playTempFile = new File(getCacheDir(),
+                        "play_" + System.currentTimeMillis() + ".m4a");
+                try (FileOutputStream fos = new FileOutputStream(playTempFile)) {
+                    fos.write(bytes);
+                }
+                MediaPlayer mp = new MediaPlayer();
+                mp.setDataSource(playTempFile.getAbsolutePath());
+                mp.prepare();
+                final AudioRefEntity refF = a;
+                final ImageButton btnF = btn;
+                mp.setOnCompletionListener(m -> stopPlayback());
+                mp.setOnErrorListener((m, what, extra) -> {
+                    stopPlayback();
+                    Toast.makeText(this, R.string.audio_play_failed,
+                            Toast.LENGTH_SHORT).show();
+                    return true;
+                });
+                mp.start();
+                player = mp;
+                playingRef = refF;
+                playingBtn = btnF;
+                btnF.setImageResource(R.drawable.ic_pause);
+            } catch (Exception e) {
+                stopPlayback();
+                Toast.makeText(this, R.string.audio_play_failed,
+                        Toast.LENGTH_SHORT).show();
+            }
+        }));
+    }
+
+    /** Hentikan pemutaran + bersihkan file temp. Aman dipanggil kapan saja. */
+    private void stopPlayback() {
+        if (player != null) {
+            try {
+                if (player.isPlaying()) player.stop();
+            } catch (Exception ignored) {
+            }
+            try {
+                player.release();
+            } catch (Exception ignored) {
+            }
+            player = null;
+        }
+        if (playingBtn != null) {
+            try {
+                playingBtn.setImageResource(R.drawable.ic_play);
+            } catch (Exception ignored) {
+            }
+            playingBtn = null;
+        }
+        playingRef = null;
+        cleanupPlayTemp();
+    }
+
+    private void cleanupPlayTemp() {
+        if (playTempFile != null) {
+            playTempFile.delete();
+            playTempFile = null;
+        }
+    }
+
+    /** Konfirmasi + hapus satu rekaman. */
+    private void confirmRemoveAudio(AudioRefEntity a) {
+        stopPlayback();
+        new IosDialog(this)
+                .setTitle(getString(R.string.audio_delete_title))
+                .setMessage(getString(R.string.audio_delete_msg))
+                .setPositive(getString(R.string.delete), () ->
+                        NoteRepository.get(this).deleteAudio(a, ok -> main.post(() -> {
+                            if (Boolean.TRUE.equals(ok)) {
+                                refreshAudio();
+                                Toast.makeText(this, R.string.audio_deleted,
+                                        Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(this, R.string.audio_delete_failed,
+                                        Toast.LENGTH_SHORT).show();
+                            }
+                        })))
+                .setNegative(getString(R.string.cancel), () -> {
+                })
+                .show();
+    }
+
+    private static String formatDuration(long ms) {
+        long s = Math.max(0, ms / 1000);
+        return String.format(Locale.getDefault(), "%d:%02d", s / 60, s % 60);
     }
 
     // ---------- menu ⋯ ----------

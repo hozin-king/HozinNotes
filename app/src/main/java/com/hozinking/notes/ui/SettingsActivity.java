@@ -277,6 +277,26 @@ public class SettingsActivity extends AppCompatActivity {
                             liveCounter.setText(
                                     getString(R.string.live_count_global, n))));
         }
+
+        // ---------- Statistik: catatan, gambar, rekaman, penyimpanan ----------
+        TextView statsCard = findViewById(R.id.stats_card);
+        if (statsCard != null) {
+            com.hozinking.notes.data.repo.NoteRepository repo =
+                    com.hozinking.notes.data.repo.NoteRepository.get(this);
+            bgDrive.execute(() -> {
+                Integer notes = block(cb -> repo.countNotes(cb));
+                Integer imgs = block(cb -> repo.countImages(cb));
+                Integer auds = block(cb -> repo.countAudio(cb));
+                long bytes = dirSize(getFilesDir());
+                String size = formatSize(bytes);
+                mainH.post(() -> statsCard.setText(getString(
+                        R.string.stats_format,
+                        notes == null ? 0 : notes,
+                        imgs == null ? 0 : imgs,
+                        auds == null ? 0 : auds,
+                        size)));
+            });
+        }
     }
 
     // ---------- Tema ----------
@@ -645,6 +665,54 @@ public class SettingsActivity extends AppCompatActivity {
 
     private void onMain(Runnable r) {
         new Handler(Looper.getMainLooper()).post(r);
+    }
+
+    // ---------- Statistik: helper ----------
+
+    /** Tunggu callback repo secara sinkron (maks 30 dtk); null bila timeout. */
+    private static <T> T block(
+            com.hozinking.notes.data.repo.NoteRepository.Cb<T> g) {
+        final Object[] box = new Object[1];
+        java.util.concurrent.CountDownLatch latch =
+                new java.util.concurrent.CountDownLatch(1);
+        try {
+            g.get(v -> {
+                box[0] = v;
+                latch.countDown();
+            });
+            if (!latch.await(30, java.util.concurrent.TimeUnit.SECONDS)) return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+        @SuppressWarnings("unchecked")
+        T t = (T) box[0];
+        return t;
+    }
+
+    /** Total ukuran direktori (rekursif). */
+    private static long dirSize(java.io.File dir) {
+        long total = 0;
+        java.io.File[] kids = dir == null ? null : dir.listFiles();
+        if (kids == null) return 0;
+        for (java.io.File f : kids) {
+            if (f.isDirectory()) total += dirSize(f);
+            else total += f.length();
+        }
+        return total;
+    }
+
+    /** Format byte -> "12,3 MB" / "456 KB" / "78 B". */
+    private static String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        double kb = bytes / 1024.0;
+        if (kb < 1024) return String.format(java.util.Locale.getDefault(),
+                "%.0f KB", kb);
+        double mb = kb / 1024.0;
+        if (mb < 1024) return String.format(java.util.Locale.getDefault(),
+                "%.1f MB", mb);
+        return String.format(java.util.Locale.getDefault(),
+                "%.2f GB", mb / 1024.0);
     }
 
     @Override
