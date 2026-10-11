@@ -147,25 +147,25 @@
     <string name="attachments_header">🖼️ %1$d lampiran</string>
 
     <!-- Chat -->
-    <string name="chat_name_desc">Chat acak dengan orang asing.\nCukup isi nama tampilan — tanpa password.</string>    <string name="chat_name_hint">Nama tampilan</string>
+    <string name="chat_name_desc">Satu ruang ngobrol untuk semua pengguna.\nCukup isi nama tampilan — tanpa password.</string>    <string name="chat_name_hint">Nama tampilan</string>
     <string name="chat_name_empty">Isi nama tampilan dulu</string>
     <string name="chat_start">Mulai</string>
     <string name="chat_login_google">Masuk dengan Google</string>
     <string name="chat_login_fail">Gagal masuk: %1$s</string>
     <string name="chat_register_fail">Gagal mendaftar: %1$s</string>
     <string name="chat_fill_email_password">Isi email dan kata sandi dulu</string>
-    <string name="chat_find_friend">Cari teman acak</string>
-    <string name="chat_searching">Mencari teman…</string>
-    <string name="chat_match_found">Teman ditemukan! Menghubungkan…</string>
-    <string name="chat_match_timeout">Belum ada teman, coba lagi</string>
-    <string name="chat_match_fail">Gagal mencari teman</string>
     <string name="chat_input_hint">Tulis pesan…</string>
     <string name="chat_send">Kirim</string>
     <string name="chat_report">Laporkan</string>
     <string name="chat_block">Blokir</string>
     <string name="chat_reported">Terima kasih, laporan dikirim</string>
     <string name="chat_blocked">Pengguna diblokir</string>
-    <string name="chat_stranger">Teman acak</string>
+    <string name="chat_room_title">Ruang Ngobrol</string>
+    <string name="chat_online">%1$d online</string>
+    <string name="chat_anonymous">Anonim</string>
+    <string name="chat_today">Hari ini</string>
+    <string name="chat_yesterday">Kemarin</string>
+    <string name="chat_slow">Santai dulu… kirim lagi beberapa detik lagi</string>
 
     <!-- Image viewer & rincian gambar -->
     <string name="img_detail_title">Rincian</string>

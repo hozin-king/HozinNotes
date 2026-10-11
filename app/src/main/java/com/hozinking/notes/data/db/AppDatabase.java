@@ -12,11 +12,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 @Database(entities = {
         NoteEntity.class,
         ImageRefEntity.class,
+        AudioRefEntity.class,
         FolderEntity.class,
         TagEntity.class,
         NoteTagCrossRef.class,
         NoteFts.class
-}, version = 5, exportSchema = false)
+}, version = 6, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -53,9 +54,29 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    /**
+     * v5 -> v6: tabel rekaman suara (audio_refs) untuk fitur Rekaman Suara.
+     * Tabel BARU — data lama tidak tersentuh, migrasi aman.
+     */
+    static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `audio_refs` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`noteId` INTEGER NOT NULL, "
+                    + "`encPath` TEXT, "
+                    + "`durationMs` INTEGER NOT NULL, "
+                    + "`createdAt` INTEGER NOT NULL)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_audio_refs_noteId` "
+                    + "ON `audio_refs` (`noteId`)");
+        }
+    };
+
     public abstract NoteDao noteDao();
 
     public abstract ImageDao imageDao();
+
+    public abstract AudioDao audioDao();
 
     public abstract FolderDao folderDao();
 
@@ -69,7 +90,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     instance = Room.databaseBuilder(app, AppDatabase.class, "hozin_notes.db")
                             .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                                    MIGRATION_4_5)
+                                    MIGRATION_4_5, MIGRATION_5_6)
                             .build();
                 }
             }

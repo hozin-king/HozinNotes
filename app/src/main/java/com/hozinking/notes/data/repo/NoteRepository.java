@@ -9,6 +9,8 @@ import android.net.Uri;
 import androidx.paging.PagingSource;
 
 import com.hozinking.notes.data.db.AppDatabase;
+import com.hozinking.notes.data.db.AudioDao;
+import com.hozinking.notes.data.db.AudioRefEntity;
 import com.hozinking.notes.data.db.FolderDao;
 import com.hozinking.notes.data.db.FolderEntity;
 import com.hozinking.notes.data.db.ImageDao;
@@ -63,6 +65,7 @@ public class NoteRepository {
     private final Context appCtx;
     private final NoteDao noteDao;
     private final ImageDao imageDao;
+    private final AudioDao audioDao;
     private final FolderDao folderDao;
     private final TagDao tagDao;
     private VaultDao vaultDao;
@@ -73,6 +76,7 @@ public class NoteRepository {
         AppDatabase db = AppDatabase.get(appCtx);
         noteDao = db.noteDao();
         imageDao = db.imageDao();
+        audioDao = db.audioDao();
         folderDao = db.folderDao();
         tagDao = db.tagDao();
         vaultDao = VaultDatabase.get(appCtx).vaultDao();
@@ -186,7 +190,7 @@ public class NoteRepository {
         });
     }
 
-    /** Hapus permanen: file gambar dulu, lalu baris images, lalu note. */
+    /** Hapus permanen: file gambar + rekaman suara dulu, lalu baris DB, lalu note. */
     public void deleteForever(long id, Cb<Void> cb) {
         io.execute(() -> {
             List<ImageRefEntity> refs = imageDao.forNote(id);
@@ -195,6 +199,12 @@ public class NoteRepository {
                 deleteFileQuiet(r.thumbPath);
             }
             imageDao.deleteForNote(id);
+            // Rekaman suara: file + baris audio_refs.
+            List<AudioRefEntity> auds = audioDao.forNote(id);
+            for (AudioRefEntity a : auds) {
+                deleteFileQuiet(a.encPath);
+            }
+            audioDao.deleteForNote(id);
             noteDao.deleteForever(id);
             PinnedNoteManager.unpinIfPinned(appCtx, id);
             cb.onResult(null);
@@ -215,6 +225,7 @@ public class NoteRepository {
             tagDao.clearCrossRefs();
             noteDao.clearAll();
             imageDao.clearAll();
+            audioDao.clearAll();
             folderDao.clearAll();
             tagDao.clearAll();
             cb.onResult(null);
@@ -587,6 +598,107 @@ public class NoteRepository {
             }
             cb.onResult(null);
         });
+    }
+
+    // ------------------------------------------------------------------ audio
+    // Rekaman suara: file AAC (.m4a) direkam di editor, dienkripsi ke
+    // filesDir/audio/*.bin, dicatat di tabel audio_refs (ide ala
+    // "quick audio notes" NotallyX, GPL-3.0 — implementasi sendiri).
+
+    private static final long MAX_AUDIO_BYTES = 10L * 1024 * 1024; // 10 MB
+
+    /**
+     * Simpan hasil rekaman: validasi ukuran, enkripsi ke filesDir/audio,
+     * catat AudioRefEntity. File plain dihapus setelah terenkripsi.
+     */
+    public void saveAudioRecording(long noteId, File plainSrc, long durationMs,
+                                   Cb<AudioRefEntity> cb) {
+        io.execute(() -> {
+            try {
+                if (plainSrc == null || !plainSrc.isFile()
+                        || plainSrc.length() > MAX_AUDIO_BYTES) {
+                    if (plainSrc != null) plainSrc.delete();
+                    cb.onResult(null);
+                    return;
+                }
+                File dir = new File(appCtx.getFilesDir(), "audio");
+                dir.mkdirs();
+                File dst = new File(dir, "aud_" + System.currentTimeMillis() + ".bin");
+                CryptoManager.get(appCtx).encryptFile(plainSrc, dst);
+                plainSrc.delete();
+                AudioRefEntity ref = new AudioRefEntity();
+                ref.noteId = noteId;
+                ref.encPath = dst.getAbsolutePath();
+                ref.durationMs = durationMs;
+                ref.createdAt = System.currentTimeMillis();
+                ref.id = audioDao.insert(ref);
+                cb.onResult(ref);
+            } catch (Exception e) {
+                cb.onResult(null);
+            }
+        });
+    }
+
+    public void getAudioRefs(long noteId, Cb<List<AudioRefEntity>> cb) {
+        io.execute(() -> cb.onResult(audioDao.forNote(noteId)));
+    }
+
+    /** Registrasi ulang referensi audio (dipakai import backup). */
+    public void insertAudioRef(AudioRefEntity ref, Cb<Long> cb) {
+        io.execute(() -> {
+            ref.createdAt = System.currentTimeMillis();
+            cb.onResult(audioDao.insert(ref));
+        });
+    }
+
+    /** Dekripsi file rekaman ke bytes plain (untuk pemutaran). Null bila gagal. */
+    public void loadAudioPlain(AudioRefEntity ref, Cb<byte[]> cb) {
+        io.execute(() -> {
+            try {
+                if (ref == null || ref.encPath == null) {
+                    cb.onResult(null);
+                    return;
+                }
+                File f = new File(ref.encPath);
+                if (!f.exists()) {
+                    cb.onResult(null);
+                    return;
+                }
+                cb.onResult(CryptoManager.get(appCtx).decryptFileToBytes(f));
+            } catch (Exception e) {
+                cb.onResult(null);
+            }
+        });
+    }
+
+    /** Hapus satu rekaman: file terenkripsi + baris audio_refs. */
+    public void deleteAudio(AudioRefEntity ref, Cb<Boolean> cb) {
+        io.execute(() -> {
+            try {
+                if (ref != null) {
+                    deleteFileQuiet(ref.encPath);
+                    audioDao.delete(ref.id);
+                }
+                cb.onResult(true);
+            } catch (Exception e) {
+                cb.onResult(false);
+            }
+        });
+    }
+
+    /** Jumlah seluruh rekaman suara (untuk statistik). */
+    public void countAudio(Cb<Integer> cb) {
+        io.execute(() -> cb.onResult(audioDao.countAll()));
+    }
+
+    /** Jumlah catatan aktif (untuk statistik). */
+    public void countNotes(Cb<Integer> cb) {
+        io.execute(() -> cb.onResult(noteDao.countActive()));
+    }
+
+    /** Jumlah seluruh gambar (untuk statistik). */
+    public void countImages(Cb<Integer> cb) {
+        io.execute(() -> cb.onResult(imageDao.countAll()));
     }
 
     // ---------------------------------------------------------------- folders

@@ -130,4 +130,25 @@
 
     <!-- Quick Settings Tile -->
     <string name="tile_quick_note">Catatan cepat</string>
+
+    <!-- Rekaman suara -->
+    <string name="audio_record">Rekam</string>
+    <string name="audio_recording">Merekam…</string>
+    <string name="audio_play">Putar rekaman</string>
+    <string name="audio_stop">Berhenti</string>
+    <string name="audio_recording_label">Rekaman suara</string>
+    <string name="audio_recordings_header">Rekaman suara (%1$d)</string>
+    <string name="audio_too_short">Rekaman terlalu pendek, dibuang</string>
+    <string name="audio_saved">Rekaman tersimpan</string>
+    <string name="audio_failed">Gagal merekam suara</string>
+    <string name="audio_deleted">Rekaman dihapus</string>
+    <string name="audio_delete_failed">Gagal menghapus rekaman</string>
+    <string name="audio_perm_denied">Izin mikrofon ditolak — rekaman suara tidak bisa dipakai</string>
+    <string name="audio_delete_title">Hapus rekaman?</string>
+    <string name="audio_delete_msg">Rekaman suara ini akan dihapus permanen dari catatan.</string>
+    <string name="audio_play_failed">Gagal memutar rekaman</string>
+
+    <!-- Statistik -->
+    <string name="stats_title">Statistik</string>
+    <string name="stats_format">Catatan: %1$d\nGambar: %2$d\nRekaman suara: %3$d\nPenyimpanan: %4$s</string>
 </resources>

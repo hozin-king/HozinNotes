@@ -28,4 +28,7 @@ public interface ImageDao {
 
     @Query("SELECT COUNT(*) FROM images WHERE liveVideoPath IS NOT NULL AND liveVideoPath != ''")
     int countLivePhotos();
+
+    @Query("SELECT COUNT(*) FROM images")
+    int countAll();
 }

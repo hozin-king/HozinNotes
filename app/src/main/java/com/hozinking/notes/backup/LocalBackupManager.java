@@ -7,6 +7,7 @@ import com.hozinking.notes.data.db.FolderEntity;
 import com.hozinking.notes.data.db.ImageRefEntity;
 import com.hozinking.notes.data.db.NoteEntity;
 import com.hozinking.notes.data.db.TagEntity;
+import com.hozinking.notes.data.db.AudioRefEntity;
 import com.hozinking.notes.data.db.VaultDatabase;
 import com.hozinking.notes.data.db.VaultImageEntity;
 import com.hozinking.notes.data.repo.NoteRepository;
@@ -59,6 +60,7 @@ public class LocalBackupManager {
         public boolean ok;
         public int notes;
         public int images;
+        public int audio;
         /** true bila backup ini memulihkan ruang privat (vault). */
         public boolean vault;
         public String error;
@@ -140,9 +142,11 @@ public class LocalBackupManager {
         JSONArray jNotes = new JSONArray();
         JSONArray jNoteTags = new JSONArray();
         JSONArray jImages = new JSONArray();
+        JSONArray jAudio = new JSONArray();
         List<ImageEntry> imageEntries = new ArrayList<>();
 
         int imgIdx = 0;
+        int audIdx = 0;
         for (NoteEntity n : notes.values()) {
             JSONObject o = new JSONObject();
             o.put("id", n.id);
@@ -185,10 +189,30 @@ public class LocalBackupManager {
                 else io.put("thumb", thumbRel);
                 jImages.put(io);
             }
+
+            // Rekaman suara: file terenkripsi disalin apa adanya ke audio/aud_N.bin.
+            List<AudioRefEntity> auds = await(cb -> repo.getAudioRefs(n.id, cb));
+            if (auds != null) for (AudioRefEntity a : auds) {
+                File af = (a.encPath == null || a.encPath.isEmpty())
+                        ? null : new File(a.encPath);
+                if (af == null || !af.isFile()) continue; // file hilang: lewati
+                byte[] data = readBytes(new FileInputStream(af));
+                String rel = "audio/aud_" + audIdx + ".bin";
+                audIdx++;
+                imageEntries.add(new ImageEntry(rel, data));
+                JSONObject ao = new JSONObject();
+                ao.put("id", a.id);
+                ao.put("noteId", a.noteId);
+                ao.put("durationMs", a.durationMs);
+                ao.put("createdAt", a.createdAt);
+                ao.put("file", rel);
+                jAudio.put(ao);
+            }
         }
         root.put("notes", jNotes);
         root.put("noteTags", jNoteTags);
         root.put("images", jImages);
+        root.put("audio", jAudio);
 
         File zip = new File(app.getCacheDir(), "hozin_notes_" + System.currentTimeMillis() + ".zip");
         JSONArray manifestFiles = new JSONArray();
@@ -434,6 +458,31 @@ public class LocalBackupManager {
                         final NoteEntity curF = cur;
                         LocalBackupManager.<Void>await(cb2 -> repo.updateNote(curF, cb2));
                     }
+                }
+
+                // audio: salin file terenkripsi ke filesDir/audio/ nama unik, remap noteId
+                File audDir = new File(ctx.getFilesDir(), "audio");
+                audDir.mkdirs();
+                JSONArray jAudio = root.optJSONArray("audio");
+                if (jAudio != null) for (int i = 0; i < jAudio.length(); i++) {
+                    JSONObject o = jAudio.getJSONObject(i);
+                    Long newNoteId = noteMap.get(o.getLong("noteId"));
+                    if (newNoteId == null) continue;
+                    String rel = o.optString("file", "");
+                    if (rel.isEmpty()) continue;
+                    File src = new File(dir, rel);
+                    if (!src.isFile()) continue;
+                    File dst = new File(audDir,
+                            "aud_" + System.currentTimeMillis() + "_" + i + ".bin");
+                    copy(new FileInputStream(src), new FileOutputStream(dst));
+                    AudioRefEntity ref = new AudioRefEntity();
+                    ref.noteId = newNoteId;
+                    ref.encPath = dst.getAbsolutePath();
+                    ref.durationMs = o.optLong("durationMs", 0);
+                    ref.createdAt = o.optLong("createdAt", System.currentTimeMillis());
+                    final AudioRefEntity refF = ref;
+                    LocalBackupManager.<Long>await(cb2 -> repo.insertAudioRef(refF, cb2));
+                    r.audio++;
                 }
 
                 if (p != null) p.onProgress(100, 100);

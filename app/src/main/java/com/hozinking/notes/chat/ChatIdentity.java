@@ -7,7 +7,7 @@ import java.util.UUID;
 
 /**
  * Identitas chat: userId acak (UUID, dibuat sekali) + nama tampilan.
- * Tanpa password — cocok untuk chat acak anonim ala Omegle.
+ * Tanpa password — satu ruang ngobrol publik untuk semua pengguna.
  */
 public final class ChatIdentity {
 
