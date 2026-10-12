@@ -31,6 +31,7 @@
                 android:textStyle="bold" />
 
             <View
+                android:id="@+id/title_divider"
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="8dp"
@@ -52,6 +53,17 @@
                 android:textColor="?attr/colorOnSurface"
                 android:textColorHint="?attr/colorOnSurfaceVariant"
                 android:textSize="16sp" />
+
+            <!-- Mode pratinjau: tampilkan hasil render, read-only -->
+            <TextView
+                android:id="@+id/preview_content"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minLines="10"
+                android:padding="0dp"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/image_header"
@@ -397,6 +409,32 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/btn_sketch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minWidth="60dp"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_sketch" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/editor_sketch"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/btn_audio"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -420,6 +458,33 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:text="@string/audio_record"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btn_preview"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:minWidth="60dp"
+                android:orientation="vertical"
+                android:padding="8dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_visibility" />
+
+                <TextView
+                    android:id="@+id/tv_preview"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/preview_title"
                     android:textColor="?attr/colorOnSurfaceVariant"
                     android:textSize="10sp" />
             </LinearLayout>

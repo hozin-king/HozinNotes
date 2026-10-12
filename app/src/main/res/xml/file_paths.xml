@@ -2,6 +2,7 @@
 <paths>
     <cache-path name="camera" path="camera/" />
     <cache-path name="pdf" path="pdf/" />
+    <cache-path name="sketch" path="sketch/" />
     <files-path name="images" path="images/" />
     <files-path name="thumbs" path="thumbs/" />
 </paths>

@@ -151,4 +151,28 @@
     <!-- Statistik -->
     <string name="stats_title">Statistik</string>
     <string name="stats_format">Catatan: %1$d\nGambar: %2$d\nRekaman suara: %3$d\nPenyimpanan: %4$s</string>
+
+    <!-- Sketsa -->
+    <string name="editor_sketch">Sketsa</string>
+    <string name="sketch_title">Sketsa</string>
+    <string name="sketch_save">Simpan</string>
+    <string name="sketch_empty">Gambar sesuatu dulu sebelum menyimpan</string>
+    <string name="sketch_saved">Sketsa tersimpan</string>
+    <string name="sketch_failed">Gagal menyimpan sketsa</string>
+    <string name="sketch_clear_title">Hapus sketsa?</string>
+    <string name="sketch_clear_msg">Semua coretan akan dihapus.</string>
+    <string name="sketch_clear_yes">Ya, hapus</string>
+    <string name="sketch_discard_title">Buang sketsa?</string>
+    <string name="sketch_discard_msg">Coretan yang belum disimpan akan hilang.</string>
+    <string name="sketch_discard_yes">Ya, buang</string>
+    <string name="sketch_undo">Urungkan</string>
+    <string name="sketch_pen">Pena</string>
+    <string name="sketch_eraser">Penghapus</string>
+    <string name="sketch_size_small">Kecil</string>
+    <string name="sketch_size_medium">Sedang</string>
+    <string name="sketch_size_large">Besar</string>
+
+    <!-- Pratinjau -->
+    <string name="preview_title">Pratinjau</string>
+    <string name="preview_edit">Tulis</string>
 </resources>

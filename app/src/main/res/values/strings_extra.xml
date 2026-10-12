@@ -165,6 +165,7 @@
     <string name="chat_anonymous">Anonim</string>
     <string name="chat_today">Hari ini</string>
     <string name="chat_yesterday">Kemarin</string>
+    <string name="chat_slow">Santai dulu… kirim lagi beberapa detik lagi</string>
 
     <!-- Image viewer & rincian gambar -->
     <string name="img_detail_title">Rincian</string>

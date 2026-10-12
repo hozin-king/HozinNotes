@@ -221,7 +221,13 @@ public class ChatActivity extends AppCompatActivity {
                     });
                 }
             } catch (WorkerChatClient.ChatException e) {
-                runOnUiThread(() -> Toast.makeText(this, e.getMessage(),
+                String msg = e.getMessage();
+                if (msg != null && msg.contains("429")) {
+                    // Slow mode ruang global: kirim terlalu cepat.
+                    msg = getString(R.string.chat_slow);
+                }
+                final String toastMsg = msg;
+                runOnUiThread(() -> Toast.makeText(this, toastMsg,
                         Toast.LENGTH_SHORT).show());
             }
         });

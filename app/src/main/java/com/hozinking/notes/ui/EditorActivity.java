@@ -17,12 +17,14 @@ import android.os.Looper;
 import android.text.Editable;
 import android.text.Html;
 import android.text.Layout;
+import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.CharacterStyle;
 import android.text.style.ParagraphStyle;
+import android.text.style.RelativeSizeSpan;
 import android.text.style.StrikethroughSpan;
 import android.text.style.StyleSpan;
 import android.text.util.Linkify;
@@ -137,7 +139,13 @@ public class EditorActivity extends AppCompatActivity {
     // Cari dalam catatan
     private ScrollView editorScroll;
     private LinearLayout findBar;
-    private EditText findInput;
+
+    // Sketsa & pratinjau
+    private TextView previewContent;
+    private TextView previewLabel;
+    private View titleDivider;
+    private boolean previewMode = false;
+    private ActivityResultLauncher<Intent> sketchLauncher;    private EditText findInput;
     private TextView findCount;
     private TextView wordCountView;
     private final List<int[]> findMatches = new ArrayList<>();
@@ -243,6 +251,23 @@ public class EditorActivity extends AppCompatActivity {
                     }
                 });
         findViewById(R.id.btn_audio).setOnClickListener(v -> onAudioButton());
+
+        // Sketsa: gambar bebas lalu simpan sebagai gambar catatan.
+        sketchLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(), result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        refreshImages();
+                        Toast.makeText(this, R.string.sketch_saved,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+        findViewById(R.id.btn_sketch).setOnClickListener(v -> openSketch());
+
+        // Pratinjau: mode baca read-only dari isi editor.
+        previewContent = findViewById(R.id.preview_content);
+        previewLabel = findViewById(R.id.tv_preview);
+        titleDivider = findViewById(R.id.title_divider);
+        findViewById(R.id.btn_preview).setOnClickListener(v -> togglePreview());
 
         // Bar cari dalam catatan + penghitung kata
         editorScroll = findViewById(R.id.editor_scroll);
@@ -1589,6 +1614,58 @@ public class EditorActivity extends AppCompatActivity {
                 })
                 .addDestructive(getString(R.string.delete), this::confirmDelete)
                 .show();
+    }
+
+    // ---------- sketsa ----------
+
+    /** Buka kanvas sketsa; pastikan note sudah tersimpan dulu. */
+    private void openSketch() {
+        if (previewMode) togglePreview();
+        withNoteId(id -> {
+            Intent i = new Intent(this, SketchActivity.class);
+            i.putExtra("noteId", id);
+            sketchLauncher.launch(i);
+        });
+    }
+
+    // ---------- pratinjau ----------
+
+    /**
+     * Toggle mode pratinjau: tampilkan isi catatan sebagai bacaan
+     * read-only (judul tebal + isi ter-render, link bisa di-tap).
+     */
+    private void togglePreview() {
+        previewMode = !previewMode;
+        if (previewMode) {
+            saveNow(); // flush perubahan yang masih tertunda
+            clearFindHighlights();
+            SpannableStringBuilder sb = new SpannableStringBuilder();
+            String t = titleInput.getText().toString().trim();
+            if (!t.isEmpty()) {
+                int s = sb.length();
+                sb.append(t);
+                sb.setSpan(new StyleSpan(Typeface.BOLD), s, sb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new RelativeSizeSpan(1.25f), s, sb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.append("\n\n");
+            }
+            sb.append(contentInput.getText());
+            previewContent.setText(sb);
+            previewContent.setMovementMethod(LinkTouchMovementMethod.getInstance());
+            titleInput.setVisibility(View.GONE);
+            titleDivider.setVisibility(View.GONE);
+            contentInput.setVisibility(View.GONE);
+            previewContent.setVisibility(View.VISIBLE);
+            previewLabel.setText(R.string.preview_edit);
+            editorScroll.scrollTo(0, 0);
+        } else {
+            previewContent.setVisibility(View.GONE);
+            titleInput.setVisibility(View.VISIBLE);
+            titleDivider.setVisibility(View.VISIBLE);
+            contentInput.setVisibility(View.VISIBLE);
+            previewLabel.setText(R.string.preview_title);
+        }
     }
 
     // ---------- cari dalam catatan ----------
