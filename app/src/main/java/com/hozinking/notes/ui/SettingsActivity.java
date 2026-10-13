@@ -36,6 +36,17 @@ public class SettingsActivity extends AppCompatActivity {
     private static final String KEY_LOCK = "lock_enabled";
     private static final String KEY_BACKUP_DAYS = "backup_days";
     private static final String KEY_WIFI_ONLY = "wifi_only";
+    private static final String KEY_FONT_SIZE = "editor_font_size"; // sp: 13|16|19|22
+
+    /** Ukuran huruf editor (sp) dari preferensi — dipakai EditorActivity. */
+    public static float editorFontSize(Context ctx) {
+        try {
+            return Float.parseFloat(ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                    .getString(KEY_FONT_SIZE, "16"));
+        } catch (NumberFormatException e) {
+            return 16f;
+        }
+    }
 
     private SharedPreferences prefs;
     private Dialog progressDialog;
@@ -65,6 +76,17 @@ public class SettingsActivity extends AppCompatActivity {
                             Uri uri = result.getData().getData();
                             if (uri != null) {
                                 askImportMode(uri);
+                            }
+                        }
+                    });
+
+    private final ActivityResultLauncher<Intent> importExternalLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                            Uri uri = result.getData().getData();
+                            if (uri != null) {
+                                doImportExternal(uri);
                             }
                         }
                     });
@@ -143,6 +165,24 @@ public class SettingsActivity extends AppCompatActivity {
                 .addItem(getString(R.string.theme_system), () -> applyTheme("system", btnTheme))
                 .show());
 
+        // ---------- Ukuran huruf editor ----------
+        TextView btnFontSize = findViewById(R.id.btn_font_size);
+        btnFontSize.setText(fontSizeLabel(prefs.getString(KEY_FONT_SIZE, "16")));
+        btnFontSize.setOnClickListener(v -> {
+            String cur = prefs.getString(KEY_FONT_SIZE, "16");
+            new IosActionSheet(this)
+                    .setTitle(getString(R.string.settings_font_size))
+                    .addItem((cur.equals("13") ? "✓ " : "") + getString(R.string.font_size_small),
+                            () -> applyFontSize("13", btnFontSize))
+                    .addItem((cur.equals("16") ? "✓ " : "") + getString(R.string.font_size_normal),
+                            () -> applyFontSize("16", btnFontSize))
+                    .addItem((cur.equals("19") ? "✓ " : "") + getString(R.string.font_size_large),
+                            () -> applyFontSize("19", btnFontSize))
+                    .addItem((cur.equals("22") ? "✓ " : "") + getString(R.string.font_size_xlarge),
+                            () -> applyFontSize("22", btnFontSize))
+                    .show();
+        });
+
         // ---------- Kunci aplikasi ----------
         switchLock = findViewById(R.id.switch_lock);
         switchLock.setChecked(prefs.getBoolean(KEY_LOCK, false));
@@ -175,6 +215,12 @@ public class SettingsActivity extends AppCompatActivity {
             i.addCategory(Intent.CATEGORY_OPENABLE);
             i.setType("application/zip");
             importLauncher.launch(i);
+        });
+        findViewById(R.id.btn_import_external).setOnClickListener(v -> {
+            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            i.addCategory(Intent.CATEGORY_OPENABLE);
+            i.setType("*/*");
+            importExternalLauncher.launch(i);
         });
 
         // ---------- Backup Drive ----------
@@ -330,6 +376,32 @@ public class SettingsActivity extends AppCompatActivity {
         btnTheme.setText(themeLabel(mode));
     }
 
+    // ---------- Ukuran huruf editor ----------
+
+    private String fontSizeLabel(String sp) {
+        String name;
+        switch (sp) {
+            case "13":
+                name = getString(R.string.font_size_small);
+                break;
+            case "19":
+                name = getString(R.string.font_size_large);
+                break;
+            case "22":
+                name = getString(R.string.font_size_xlarge);
+                break;
+            default:
+                name = getString(R.string.font_size_normal);
+                break;
+        }
+        return getString(R.string.settings_font_size) + ": " + name;
+    }
+
+    private void applyFontSize(String sp, TextView btnFontSize) {
+        prefs.edit().putString(KEY_FONT_SIZE, sp).apply();
+        btnFontSize.setText(fontSizeLabel(sp));
+    }
+
     /** Dipanggil dari Application.onCreate agar tema tersimpan diterapkan saat start. */
     public static void applySavedTheme(Context ctx) {
         String mode = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -353,6 +425,28 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     // ---------- Backup lokal ----------
+
+    /** Impor dari aplikasi lain: Evernote (.enex) / Google Keep (.json / .zip Takeout). */
+    private void doImportExternal(Uri uri) {
+        showProgress(getString(R.string.import_external_working));
+        com.hozinking.notes.backup.NoteImporter.importFile(this, uri, r -> onMain(() -> {
+            hideProgress();
+            if (r.error != null) {
+                Toast.makeText(this,
+                        getString(R.string.import_external_failed, r.error),
+                        Toast.LENGTH_LONG).show();
+            } else if (r.imported == 0) {
+                Toast.makeText(this, getString(R.string.import_external_none),
+                        Toast.LENGTH_LONG).show();
+            } else {
+                String skipped = r.skipped > 0
+                        ? getString(R.string.import_external_skipped, r.skipped) : "";
+                Toast.makeText(this,
+                        getString(R.string.import_external_done, r.imported, skipped),
+                        Toast.LENGTH_LONG).show();
+            }
+        }));
+    }
 
     private void doExport(Uri uri) {
         showProgress(getString(R.string.backup_exporting));

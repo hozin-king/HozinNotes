@@ -177,6 +177,9 @@ public class EditorActivity extends AppCompatActivity {
         // URL bisa di-tap langsung dari editor (tanpa merusak kursor/seleksi).
         Linkify.addLinks(contentInput, Linkify.WEB_URLS);
         contentInput.setMovementMethod(LinkTouchMovementMethod.getInstance());
+        // Ukuran huruf editor mengikuti preferensi (Pengaturan → Tampilan).
+        contentInput.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,
+                SettingsActivity.editorFontSize(this));
 
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(), uri -> {

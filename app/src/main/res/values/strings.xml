@@ -89,4 +89,16 @@
     <string name="pw_strength">Kekuatan: %1$s</string>
     <string name="deleted">Dihapus</string>
 
+    <string name="import_external">Impor dari aplikasi lain (.enex / Keep)</string>
+    <string name="import_external_working">Mengimpor catatan…</string>
+    <string name="import_external_done">Impor selesai: %1$d catatan diimpor%2$s</string>
+    <string name="import_external_skipped">, %1$d dilewati</string>
+    <string name="import_external_none">Tidak ada catatan yang bisa diimpor dari file ini</string>
+    <string name="import_external_failed">Gagal mengimpor: %1$s</string>
+    <string name="settings_font_size">Ukuran huruf editor</string>
+    <string name="font_size_small">Kecil</string>
+    <string name="font_size_normal">Normal</string>
+    <string name="font_size_large">Besar</string>
+    <string name="font_size_xlarge">Sangat besar</string>
+
 </resources>

@@ -35,6 +35,21 @@
             android:gravity="center"
             android:padding="12dp" />
 
+        <TextView
+            android:id="@+id/btn_font_size"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="15sp" 
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:padding="12dp" />
+
         <!-- Kunci aplikasi -->
         <TextView
             android:layout_width="wrap_content"
@@ -101,6 +116,22 @@
             android:layout_marginTop="8dp"
             android:background="@drawable/bg_card"
             android:text="@string/backup_import"
+            android:textAllCaps="false"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="15sp" 
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:padding="12dp" />
+
+        <TextView
+            android:id="@+id/btn_import_external"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_card"
+            android:text="@string/import_external"
             android:textAllCaps="false"
             android:textColor="?attr/colorOnSurface"
             android:textSize="15sp" 
