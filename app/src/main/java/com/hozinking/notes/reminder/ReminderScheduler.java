@@ -24,6 +24,8 @@ public class ReminderScheduler {
     public static final int REPEAT_NONE = 0;
     public static final int REPEAT_DAILY = 1;
     public static final int REPEAT_WEEKLY = 2;
+    /** v1.14: tiap bulan (tanggal yang sama; akhir bulan menyesuaikan kalender). */
+    public static final int REPEAT_MONTHLY = 3;
 
     /** Tunda (snooze) default: 10 menit. */
     public static final long SNOOZE_DELAY_MS = 10L * 60 * 1000;
@@ -83,6 +85,9 @@ public class ReminderScheduler {
      * from = waktu bunyi terakhir (atau yang dijadwalkan).
      */
     public static long nextRepeatTime(long from, int repeat) {
+        if (repeat == REPEAT_MONTHLY) {
+            return nextMonthly(from);
+        }
         long step;
         if (repeat == REPEAT_DAILY) {
             step = 24L * 3600 * 1000;
@@ -98,6 +103,24 @@ public class ReminderScheduler {
             next += step;
         }
         return next;
+    }
+
+    /**
+     * Kemunculan berikutnya untuk pola bulanan: tambah 1 bulan per langkah
+     * via Calendar (menangani Februari/tanggal 29-31 secara alami),
+     * kejar ketertinggalan sampai di masa depan.
+     */
+    private static long nextMonthly(long from) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(from);
+        long now = System.currentTimeMillis();
+        long next = from;
+        int guard = 0;
+        while (next <= now && guard++ < 120) { // maks 10 tahun ke depan
+            c.add(java.util.Calendar.MONTH, 1);
+            next = c.getTimeInMillis();
+        }
+        return next > now ? next : 0;
     }
 
     /** Jadwal ulang semua pengingat aktif (dipakai saat BOOT_COMPLETED). */

@@ -31,6 +31,8 @@ public class SearchActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable pending;
     private LiveData<PagingData<NoteEntity>> liveData;
+    /** Kata kunci terakhir — diteruskan ke editor agar cocok langsung tersorot. */
+    private String lastQuery = "";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -67,6 +69,7 @@ public class SearchActivity extends AppCompatActivity {
 
     private void doSearch(String query) {
         String q = query.trim();
+        lastQuery = q;
         if (liveData != null) liveData.removeObservers(this);
         if (q.isEmpty()) {
             liveData = null;
@@ -86,6 +89,8 @@ public class SearchActivity extends AppCompatActivity {
     private void openEditor(long id) {
         Intent i = new Intent(this, EditorActivity.class);
         i.putExtra("noteId", id);
+        // v1.14: editor membuka bar cari berisi kata kunci hasil pencarian.
+        if (!lastQuery.isEmpty()) i.putExtra("findQuery", lastQuery);
         startActivity(i);
     }
 

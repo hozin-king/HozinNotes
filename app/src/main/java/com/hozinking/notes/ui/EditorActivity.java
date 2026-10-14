@@ -300,6 +300,9 @@ public class EditorActivity extends AppCompatActivity {
                 updateUndoRedoButtons();
                 refreshImages();
                 refreshAudio();
+                // v1.14: dibuka dari hasil pencarian — tampilkan bar cari dengan
+                // kata kunci pencarian terisi agar cocok langsung tersorot.
+                autoOpenFindFromSearch();
             }));
         } else {
             note = newNote();
@@ -1600,6 +1603,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.export_md), this::exportMarkdown)
+                .addItem(getString(R.string.export_html), this::exportHtml)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
                 .addItem(getString(R.string.checklist_sort_checked), this::sortCheckedToBottom)
                 .addItem(getString(R.string.checklist_clear_checked), this::clearCheckedItems)
@@ -1691,6 +1695,15 @@ public class EditorActivity extends AppCompatActivity {
         findBar.setVisibility(View.GONE);
         findInput.setText("");
         clearFindHighlights();
+    }
+
+    /** Dibuka dari SearchActivity: isi bar cari dengan kata kunci & tampilkan. */
+    private void autoOpenFindFromSearch() {
+        String q = getIntent().getStringExtra("findQuery");
+        if (q == null || q.trim().isEmpty()) return;
+        showFindBar();
+        findInput.setText(q.trim());
+        findInput.setSelection(findInput.getText().length());
     }
 
     private void clearFindHighlights() {
@@ -1863,6 +1876,14 @@ public class EditorActivity extends AppCompatActivity {
                 note.content == null ? "" : note.content, note.contentHtml);
     }
 
+    /** Ekspor catatan ini menjadi HTML (.html) lalu bagikan. */
+    private void exportHtml() {
+        if (note == null) return;
+        saveNow(); // sinkronkan field dulu
+        HtmlExporter.exportAndShare(this, displayTitle(),
+                note.content == null ? "" : note.content, note.contentHtml);
+    }
+
     /** Duplikat catatan ini (teks + tag + warna + folder). */
     private void duplicateNote() {
         if (note == null) return;
@@ -1966,6 +1987,9 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.reminder_repeat_weekly),
                         () -> applyReminder(when,
                                 com.hozinking.notes.reminder.ReminderScheduler.REPEAT_WEEKLY))
+                .addItem(getString(R.string.reminder_repeat_monthly),
+                        () -> applyReminder(when,
+                                com.hozinking.notes.reminder.ReminderScheduler.REPEAT_MONTHLY))
                 .show();
     }
 
@@ -1985,6 +2009,9 @@ public class EditorActivity extends AppCompatActivity {
         }
         if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_WEEKLY) {
             return getString(R.string.reminder_repeat_weekly);
+        }
+        if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_MONTHLY) {
+            return getString(R.string.reminder_repeat_monthly);
         }
         return getString(R.string.reminder_repeat_once);
     }

@@ -81,6 +81,7 @@
     <string name="reminder_repeat_once">Sekali saja</string>
     <string name="reminder_repeat_daily">Setiap hari</string>
     <string name="reminder_repeat_weekly">Setiap minggu</string>
+    <string name="reminder_repeat_monthly">Setiap bulan</string>
     <string name="reminder_snooze">Tunda 10 mnt</string>
     <string name="reminder_snoozed">Pengingat ditunda 10 menit.</string>
 
@@ -97,6 +98,10 @@
     <!-- Ekspor Markdown -->
     <string name="export_md">Ekspor Markdown</string>
     <string name="md_error">Gagal membuat Markdown</string>
+
+    <!-- Ekspor HTML -->
+    <string name="export_html">Ekspor HTML</string>
+    <string name="html_error">Gagal membuat HTML</string>
 
     <!-- Sematkan catatan di notifikasi -->
     <string name="pin_notification">Sematkan di notifikasi</string>
