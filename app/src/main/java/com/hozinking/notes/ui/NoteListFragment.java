@@ -394,6 +394,56 @@ public class NoteListFragment extends Fragment {
         }));
     }
 
+    /** Gabungkan catatan: pilih tujuan -> konfirmasi -> pindah isi+gambar+tag. */
+    private void showMergePicker(NoteEntity n) {
+        NoteRepository.get(requireContext()).getMergeTargets(n.id, targets -> main.post(() -> {
+            if (targets == null || targets.isEmpty()) {
+                Toast.makeText(requireContext(),
+                        R.string.merge_none, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            final java.util.List<NoteEntity> list = new java.util.ArrayList<>(targets);
+            String[] titles = new String[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                NoteEntity t = list.get(i);
+                String tt = (t.title == null || t.title.trim().isEmpty())
+                        ? getString(R.string.notes_no_title) : t.title.trim();
+                titles[i] = tt;
+            }
+            new android.app.AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.merge_pick_target)
+                    .setItems(titles, (d, which) -> confirmMerge(n, list.get(which)))
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        }));
+    }
+
+    private void confirmMerge(NoteEntity src, NoteEntity target) {
+        String srcTitle = (src.title == null || src.title.trim().isEmpty())
+                ? getString(R.string.notes_no_title) : src.title.trim();
+        String tgtTitle = (target.title == null || target.title.trim().isEmpty())
+                ? getString(R.string.notes_no_title) : target.title.trim();
+        new IosDialog(requireContext())
+                .setTitle(getString(R.string.merge_confirm_title))
+                .setMessage(getString(R.string.merge_confirm_msg, srcTitle, tgtTitle))
+                .setNegative(getString(R.string.cancel), null)
+                .setPositive(getString(R.string.merge_do), () -> doMerge(src, target))
+                .show();
+    }
+
+    private void doMerge(NoteEntity src, NoteEntity target) {
+        NoteRepository.get(requireContext()).mergeNote(src.id, target.id, ok -> main.post(() -> {
+            if (Boolean.TRUE.equals(ok)) {
+                Toast.makeText(requireContext(),
+                        R.string.merge_done, Toast.LENGTH_SHORT).show();
+                adapter.refresh();
+            } else {
+                Toast.makeText(requireContext(),
+                        R.string.merge_fail, Toast.LENGTH_SHORT).show();
+            }
+        }));
+    }
+
     /** Sematkan/lepas catatan sebagai notifikasi persisten (ala nproth/pin). */
     private void togglePinnedNotification(NoteEntity n) {
         if (PinnedNoteManager.isPinned(requireContext(), n.id)) {
@@ -448,6 +498,7 @@ public class NoteListFragment extends Fragment {
                         () -> togglePinnedNotification(n))
                 .addItem(getString(R.string.share), () -> shareNoteFull(n))
                 .addItem(getString(R.string.duplicate), () -> duplicateNote(n))
+                .addItem(getString(R.string.merge_note), () -> showMergePicker(n))
                 .addItem(getString(R.string.notes_color_title), () -> showColorSheet(n))
                 .addDestructive(getString(R.string.delete), () -> confirmDelete(n))
                 .show();

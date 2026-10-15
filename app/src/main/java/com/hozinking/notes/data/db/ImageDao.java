@@ -23,6 +23,10 @@ public interface ImageDao {
     @Query("DELETE FROM images WHERE noteId=:noteId")
     void deleteForNote(long noteId);
 
+    /** Pindahkan semua referensi gambar dari satu note ke note lain (untuk gabung catatan). */
+    @Query("UPDATE images SET noteId=:toId WHERE noteId=:fromId")
+    void reassignNote(long fromId, long toId);
+
     @Query("DELETE FROM images")
     void clearAll();
 

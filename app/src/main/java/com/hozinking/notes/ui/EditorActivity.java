@@ -429,6 +429,22 @@ public class EditorActivity extends AppCompatActivity {
         scheduleSave();
     }
 
+    /**
+     * Sisipkan cap tanggal &amp; waktu sekarang di posisi kursor.
+     * Format ala Indonesia, mis. "15 Okt 2026 09:12".
+     */
+    private void insertDateTime() {
+        if (previewMode) togglePreview();
+        if (note == null) return;
+        String stamp = new java.text.SimpleDateFormat("d MMM yyyy HH:mm",
+                new Locale("id", "ID")).format(new java.util.Date());
+        int pos = Math.max(contentInput.getSelectionStart(), 0);
+        Editable e = contentInput.getText();
+        String prefix = (pos > 0 && e.charAt(pos - 1) != '\n') ? "\n" : "";
+        e.insert(pos, prefix + stamp);
+        scheduleSave();
+    }
+
     private void toggleChecklist() {
         int pos = Math.max(contentInput.getSelectionStart(), 0);
         Editable e = contentInput.getText();
@@ -1600,6 +1616,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.notes_tags_title), this::showTagsDialog)
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
                 .addItem(getString(R.string.editor_find_in_note), this::showFindBar)
+                .addItem(getString(R.string.editor_insert_datetime), this::insertDateTime)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.export_md), this::exportMarkdown)

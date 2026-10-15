@@ -81,9 +81,13 @@ public interface NoteDao {
             + "ORDER BY n.updatedAt DESC")
     PagingSource<Integer, NoteEntity> searchFts(String q);
 
-    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
-            + "ORDER BY pinned DESC, updatedAt DESC LIMIT 1")
+    @Query("SELECT \" + PROJECTION + \" FROM notes WHERE trashed=0 AND archived=0 \"\n            + \"ORDER BY pinned DESC, updatedAt DESC LIMIT 1")
     NoteEntity getLatestActive();
+
+    /** Kandidat tujuan gabung catatan: catatan aktif lain, terbaru dulu (dibatasi). */
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 AND id<>:excludeId "
+            + "ORDER BY pinned DESC, updatedAt DESC LIMIT :limit")
+    List<NoteEntity> mergeTargets(long excludeId, int limit);
 
     @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
     List<NoteEntity> getAllForBackup();

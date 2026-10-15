@@ -20,6 +20,10 @@ public interface AudioDao {
     @Query("DELETE FROM audio_refs WHERE noteId=:noteId")
     void deleteForNote(long noteId);
 
+    /** Pindahkan semua rekaman suara dari satu note ke note lain (untuk gabung catatan). */
+    @Query("UPDATE audio_refs SET noteId=:toId WHERE noteId=:fromId")
+    void reassignNote(long fromId, long toId);
+
     @Query("DELETE FROM audio_refs")
     void clearAll();
 

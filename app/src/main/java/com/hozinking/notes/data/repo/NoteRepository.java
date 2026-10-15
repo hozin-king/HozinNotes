@@ -190,6 +190,108 @@ public class NoteRepository {
         });
     }
 
+    /** Kandidat tujuan gabung catatan (semua catatan aktif kecuali sumber). */
+    public void getMergeTargets(long excludeId, Cb<List<NoteEntity>> cb) {
+        io.execute(() -> cb.onResult(noteDao.mergeTargets(excludeId, 50)));
+    }
+
+    /**
+     * Gabungkan catatan: pindahkan isi, gambar, rekaman suara, dan tag dari
+     * sumber ke tujuan. Catatan sumber lalu dipindah ke Sampah (bisa dipulihkan,
+     * bukan hapus permanen). Terinspirasi fitur "merge notes" Omni-Notes
+     * (federicoiosue/Omni-Notes, GPL-3.0); implementasi sendiri.
+     *
+     * Aturan: judul, folder, warna, dan status tujuan dipertahankan. Pengingat
+     * sumber ikut pindah bila tujuan belum punya pengingat.
+     */
+    public void mergeNote(long srcId, long targetId, Cb<Boolean> cb) {
+        io.execute(() -> {
+            try {
+                if (srcId == targetId || srcId <= 0 || targetId <= 0) {
+                    cb.onResult(false);
+                    return;
+                }
+                NoteEntity src = noteDao.getById(srcId);
+                NoteEntity tgt = noteDao.getById(targetId);
+                if (src == null || tgt == null || src.trashed || tgt.trashed) {
+                    cb.onResult(false);
+                    return;
+                }
+                String srcTitle = src.title == null ? "" : src.title.trim();
+                String srcBody = src.content == null ? "" : src.content;
+                String tgtBody = tgt.content == null ? "" : tgt.content;
+                // Bila format berbeda, turunkan konten sumber ke teks polos
+                // agar tidak merusak render tujuan.
+                if (src.contentHtml && !tgt.contentHtml) {
+                    srcBody = android.text.Html.fromHtml(srcBody,
+                            android.text.Html.FROM_HTML_MODE_LEGACY).toString().trim();
+                }
+                if (tgt.contentHtml) {
+                    String sep = "<hr><p><b>&#9472;&#9472;&#9472; "
+                            + escapeHtml(srcTitle) + " &#9472;&#9472;&#9472;</b></p>";
+                    String srcHtml = src.contentHtml ? srcBody
+                            : "<p>" + escapeHtml(srcBody).replace("\n", "<br>") + "</p>";
+                    tgt.content = tgtBody + sep + srcHtml;
+                } else {
+                    String head = srcTitle.isEmpty() ? "" : srcTitle;
+                    tgt.content = tgtBody + "\n\n─── " + head + " ───\n\n" + srcBody;
+                }
+                // Pindahkan gambar + rekaman suara, lalu sinkronkan jumlah.
+                imageDao.reassignNote(srcId, targetId);
+                audioDao.reassignNote(srcId, targetId);
+                List<ImageRefEntity> imgs = imageDao.forNote(targetId);
+                tgt.imageCount = imgs == null ? 0 : imgs.size();
+                // Tag: gabungan (insertCrossRef sudah IGNORE bila duplikat).
+                List<TagEntity> srcTags = tagDao.forNote(srcId);
+                if (srcTags != null) {
+                    for (TagEntity te : srcTags) {
+                        if (te == null || te.name == null || te.name.trim().isEmpty()) continue;
+                        TagEntity tag = tagDao.byName(te.name);
+                        long tagId;
+                        if (tag != null) {
+                            tagId = tag.id;
+                        } else {
+                            TagEntity fresh = new TagEntity();
+                            fresh.name = te.name;
+                            tagId = tagDao.insert(fresh);
+                            if (tagId == -1) continue;
+                        }
+                        tagDao.insertCrossRef(new NoteTagCrossRef(targetId, tagId));
+                    }
+                }
+                // Pengingat sumber ikut pindah bila tujuan belum punya.
+                if (tgt.reminderTime == 0 && src.reminderTime > 0) {
+                    tgt.reminderTime = src.reminderTime;
+                    tgt.reminderRepeat = src.reminderRepeat;
+                }
+                tgt.updatedAt = System.currentTimeMillis();
+                noteDao.update(tgt);
+                noteDao.trash(srcId, System.currentTimeMillis());
+                PinnedNoteManager.unpinIfPinned(appCtx, srcId);
+                cb.onResult(true);
+            } catch (Exception e) {
+                cb.onResult(false);
+            }
+        });
+    }
+
+    /** Escape minimal untuk judul yang disisipkan ke HTML. */
+    private static String escapeHtml(String s) {
+        if (s == null) return "";
+        StringBuilder sb = new StringBuilder(s.length());
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '&': sb.append("&amp;"); break;
+                case '<': sb.append("&lt;"); break;
+                case '>': sb.append("&gt;"); break;
+                case '"': sb.append("&quot;"); break;
+                default: sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
     /** Hapus permanen: file gambar + rekaman suara dulu, lalu baris DB, lalu note. */
     public void deleteForever(long id, Cb<Void> cb) {
         io.execute(() -> {

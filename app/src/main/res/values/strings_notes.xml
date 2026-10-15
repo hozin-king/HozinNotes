@@ -118,6 +118,19 @@
     <string name="note_duplicated">Catatan diduplikat</string>
     <string name="duplicate_need_save">Simpan dulu catatannya sebelum diduplikat.</string>
     <string name="duplicate_failed">Gagal menduplikat catatan</string>
+
+    <!-- Gabung catatan -->
+    <string name="merge_note">Gabungkan ke…</string>
+    <string name="merge_pick_target">Pilih catatan tujuan</string>
+    <string name="merge_confirm_title">Gabungkan catatan?</string>
+    <string name="merge_confirm_msg">Isi, gambar, rekaman suara, dan tag dari “%1$s” akan dipindah ke “%2$s”. Catatan ini lalu dipindah ke Sampah (masih bisa dipulihkan).</string>
+    <string name="merge_do">Gabungkan</string>
+    <string name="merge_done">Catatan digabungkan</string>
+    <string name="merge_fail">Gagal menggabungkan catatan</string>
+    <string name="merge_none">Tidak ada catatan lain untuk digabung</string>
+
+    <!-- Sisip tanggal &amp; waktu -->
+    <string name="editor_insert_datetime">Sisipkan tanggal &amp; waktu</string>
     <string name="archived_undo">Catatan diarsipkan</string>
 
     <!-- Template catatan baru -->
