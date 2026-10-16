@@ -73,7 +73,7 @@ public class SearchActivity extends AppCompatActivity {
         if (liveData != null) liveData.removeObservers(this);
         if (q.isEmpty()) {
             liveData = null;
-            adapter.submitData(getLifecycle(), PagingData.<NoteEntity>empty());
+            adapter.submitData(getLifecycle(), PagingData.<NoteListItem>empty());
             hintView.setVisibility(View.VISIBLE);
             return;
         }
@@ -83,7 +83,8 @@ public class SearchActivity extends AppCompatActivity {
                 () -> NoteRepository.get(this).searchFts(q));
         liveData = PagingLiveData.getLiveData(pager);
         liveData.observe(this,
-                pagingData -> adapter.submitData(getLifecycle(), pagingData));
+                pagingData -> adapter.submitData(getLifecycle(),
+                        pagingData.map(NoteListItem::ofNote)));
     }
 
     private void openEditor(long id) {

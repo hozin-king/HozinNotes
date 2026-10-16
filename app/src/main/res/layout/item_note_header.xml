@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Header seksi waktu di daftar catatan ("Hari ini", "Kemarin", ...). -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/header_label"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingStart="20dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="16dp"
+    android:paddingBottom="4dp"
+    android:textSize="13sp"
+    android:textStyle="bold"
+    android:letterSpacing="0.04"
+    android:textColor="?android:attr/textColorSecondary" />

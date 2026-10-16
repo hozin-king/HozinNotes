@@ -344,6 +344,15 @@ public class NoteRepository {
         return noteDao.pagingActiveOldest();
     }
 
+    /** v1.16: urut berdasarkan tanggal dibuat. */
+    public PagingSource<Integer, NoteEntity> pagingActiveCreated() {
+        return noteDao.pagingActiveCreated();
+    }
+
+    public PagingSource<Integer, NoteEntity> pagingActiveCreatedOld() {
+        return noteDao.pagingActiveCreatedOld();
+    }
+
     public PagingSource<Integer, NoteEntity> pagingActiveTitle() {
         return noteDao.pagingActiveTitle();
     }
@@ -370,6 +379,15 @@ public class NoteRepository {
 
     public PagingSource<Integer, NoteEntity> pagingByTagOldest(long tagId) {
         return noteDao.pagingByTagOldest(tagId);
+    }
+
+    /** v1.16: filter tag + urut tanggal dibuat. */
+    public PagingSource<Integer, NoteEntity> pagingByTagCreated(long tagId) {
+        return noteDao.pagingByTagCreated(tagId);
+    }
+
+    public PagingSource<Integer, NoteEntity> pagingByTagCreatedOld(long tagId) {
+        return noteDao.pagingByTagCreatedOld(tagId);
     }
 
     public PagingSource<Integer, NoteEntity> pagingByTagTitle(long tagId) {

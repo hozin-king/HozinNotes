@@ -23,6 +23,16 @@
     <string name="notes_sort_oldest">Terlama dulu</string>
     <string name="notes_sort_title_az">Judul A-Z</string>
     <string name="notes_sort_color">Warna</string>
+    <string name="notes_sort_created_new">Dibuat: terbaru</string>
+    <string name="notes_sort_created_old">Dibuat: terlama</string>
+
+    <!-- v1.16: header seksi waktu di daftar catatan -->
+    <string name="section_pinned">📌 Disematkan</string>
+    <string name="section_today">Hari ini</string>
+    <string name="section_yesterday">Kemarin</string>
+    <string name="section_week">Minggu ini</string>
+    <string name="section_month">Bulan ini</string>
+    <string name="section_older">Lebih lama</string>
     <string name="notes_vault_cd">Ruang privat</string>
     <string name="notes_more_cd">Menu lainnya</string>
 

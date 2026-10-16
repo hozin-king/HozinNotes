@@ -63,7 +63,8 @@ public class ArchiveActivity extends AppCompatActivity {
                 new PagingConfig(60),
                 () -> NoteRepository.get(this).pagingArchived());
         PagingLiveData.getLiveData(pager).observe(this,
-                pagingData -> adapter.submitData(getLifecycle(), pagingData));
+                pagingData -> adapter.submitData(getLifecycle(),
+                        pagingData.map(NoteListItem::ofNote)));
     }
 
     private void openEditor(long id) {
