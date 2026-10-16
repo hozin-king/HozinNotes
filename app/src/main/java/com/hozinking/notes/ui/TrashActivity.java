@@ -65,7 +65,8 @@ public class TrashActivity extends AppCompatActivity {
                 new PagingConfig(60),
                 () -> NoteRepository.get(this).pagingTrashed());
         PagingLiveData.getLiveData(pager).observe(this,
-                pagingData -> adapter.submitData(getLifecycle(), pagingData));
+                pagingData -> adapter.submitData(getLifecycle(),
+                        PagingXforms.map(pagingData, NoteListItem::ofNote)));
 
         findViewById(R.id.btn_purge).setOnClickListener(v -> confirmPurge());
     }

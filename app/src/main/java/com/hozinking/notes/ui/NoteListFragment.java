@@ -25,6 +25,7 @@ import androidx.fragment.app.Fragment;
 import androidx.paging.LoadState;
 import androidx.paging.Pager;
 import androidx.paging.PagingConfig;
+import androidx.paging.PagingData;
 import androidx.paging.PagingLiveData;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -63,7 +64,8 @@ public class NoteListFragment extends Fragment {
     // Preferensi tampilan ala Keep.
     private static final String PREFS = "notes_view_prefs";
     private static final String KEY_VIEW_MODE = "view_mode"; // grid | list
-    private static final String KEY_SORT = "sort"; // newest | oldest | title | color
+    // v1.16: tambah "created_new" | "created_old" (urut tanggal dibuat).
+    private static final String KEY_SORT = "sort"; // newest | oldest | title | color | created_new | created_old
 
     // Sematkan catatan di notifikasi (izin POST_NOTIFICATIONS API 33+).
     private static final int RC_NOTIF_PIN = 3001;
@@ -155,8 +157,18 @@ public class NoteListFragment extends Fragment {
             }
 
             @Override
+            public int getSwipeDirs(@NonNull RecyclerView rv,
+                                    @NonNull RecyclerView.ViewHolder vh) {
+                // v1.16: header seksi tidak bisa di-swipe.
+                NoteListItem it = adapter.peek(vh.getBindingAdapterPosition());
+                if (it == null || it.note == null) return 0;
+                return super.getSwipeDirs(rv, vh);
+            }
+
+            @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder vh, int direction) {
-                NoteEntity n = adapter.peek(vh.getBindingAdapterPosition());
+                NoteListItem it = adapter.peek(vh.getBindingAdapterPosition());
+                NoteEntity n = it == null ? null : it.note;
                 if (n == null) {
                     adapter.refresh();
                     return;
@@ -217,13 +229,22 @@ public class NoteListFragment extends Fragment {
     /** Bangun ulang pager sesuai filter tag + urutan aktif. */
     private void refreshList() {
         final String sort = getSort();
+        // v1.16: header seksi waktu hanya untuk urutan berbasis tanggal.
+        final boolean dateSort = sort.equals("newest") || sort.equals("oldest")
+                || sort.equals("created_new") || sort.equals("created_old");
+        final boolean useCreated = sort.startsWith("created");
         Pager<Integer, NoteEntity> pager;
+        // v1.16: placeholders dimatikan agar header seksi tidak flicker
+        // saat halaman baru dimuat (insertSeparators butuh aliran kontinu).
+        PagingConfig config = new PagingConfig(60, 60, false);
         if (filterTagId != null) {
             final long tid = filterTagId;
-            pager = new Pager<>(new PagingConfig(60), () -> {
+            pager = new Pager<>(config, () -> {
                 NoteRepository r = NoteRepository.get(requireContext());
                 switch (sort) {
                     case "oldest": return r.pagingByTagOldest(tid);
+                    case "created_new": return r.pagingByTagCreated(tid);
+                    case "created_old": return r.pagingByTagCreatedOld(tid);
                     case "title": return r.pagingByTagTitle(tid);
                     case "color": return r.pagingByTagColor(tid);
                     default: return r.pagingByTag(tid);
@@ -232,10 +253,12 @@ public class NoteListFragment extends Fragment {
             tagFilterChip.setText(getString(R.string.tag_filter_active, filterTagName));
             tagFilterChip.setVisibility(View.VISIBLE);
         } else {
-            pager = new Pager<>(new PagingConfig(60), () -> {
+            pager = new Pager<>(config, () -> {
                 NoteRepository r = NoteRepository.get(requireContext());
                 switch (sort) {
                     case "oldest": return r.pagingActiveOldest();
+                    case "created_new": return r.pagingActiveCreated();
+                    case "created_old": return r.pagingActiveCreatedOld();
                     case "title": return r.pagingActiveTitle();
                     case "color": return r.pagingActiveColor();
                     default: return r.pagingActive();
@@ -244,8 +267,66 @@ public class NoteListFragment extends Fragment {
             tagFilterChip.setVisibility(View.GONE);
         }
         PagingLiveData.getLiveData(pager).observe(getViewLifecycleOwner(),
-                pagingData -> adapter.submitData(getViewLifecycleOwner().getLifecycle(),
-                        pagingData));
+                pagingData -> {
+                    // v1.16: map/insertSeparators adalah extension Kotlin —
+                    // dari Java dipanggil via PagingXforms.
+                    PagingData<NoteListItem> items =
+                            PagingXforms.map(pagingData, NoteListItem::ofNote);
+                    if (dateSort) {
+                        items = PagingXforms.insertSeparators(items,
+                                (before, after) -> separatorFor(before, after, useCreated));
+                    }
+                    adapter.submitData(getViewLifecycleOwner().getLifecycle(), items);
+                });
+    }
+
+    /**
+     * v1.16: header seksi waktu di antara catatan ("📌 Disematkan",
+     * "Hari ini", "Kemarin", ...). Konsep pengelompokan dipinjam dari
+     * Noto (alialbaali/Noto, Apache-2.0); implementasi sendiri via
+     * Paging 3 insertSeparators.
+     */
+    private NoteListItem separatorFor(NoteListItem before, NoteListItem after,
+                                      boolean useCreated) {
+        if (after == null || after.note == null) return null;
+        boolean afterPinned = after.note.pinned;
+        boolean beforePinned = before != null && before.note != null && before.note.pinned;
+        if (afterPinned) {
+            return beforePinned ? null
+                    : NoteListItem.ofHeader(getString(R.string.section_pinned));
+        }
+        long ts = useCreated ? after.note.createdAt : after.note.updatedAt;
+        int sec = sectionOf(ts);
+        Integer bsec = null;
+        if (before != null && before.note != null && !before.note.pinned) {
+            bsec = sectionOf(useCreated ? before.note.createdAt : before.note.updatedAt);
+        }
+        if (bsec == null || bsec != sec) {
+            return NoteListItem.ofHeader(getString(sectionTitleRes(sec)));
+        }
+        return null;
+    }
+
+    /** 0 = hari ini, 1 = kemarin, 2 = 7 hari terakhir, 3 = 30 hari terakhir, 4 = lebih lama. */
+    private static int sectionOf(long ts) {
+        java.time.LocalDate d = java.time.Instant.ofEpochMilli(ts)
+                .atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        if (d.isEqual(today)) return 0;
+        if (d.isEqual(today.minusDays(1))) return 1;
+        if (!d.isBefore(today.minusDays(7))) return 2;
+        if (!d.isBefore(today.minusMonths(1))) return 3;
+        return 4;
+    }
+
+    private static int sectionTitleRes(int sec) {
+        switch (sec) {
+            case 0: return R.string.section_today;
+            case 1: return R.string.section_yesterday;
+            case 2: return R.string.section_week;
+            case 3: return R.string.section_month;
+            default: return R.string.section_older;
+        }
     }
 
     // ---------- tampilan ala Keep: grid/list + urutan ----------
@@ -296,6 +377,10 @@ public class NoteListFragment extends Fragment {
                 () -> setSort("newest"));
         s.addItem((cur.equals("oldest") ? "✓ " : "") + getString(R.string.notes_sort_oldest),
                 () -> setSort("oldest"));
+        s.addItem((cur.equals("created_new") ? "✓ " : "") + getString(R.string.notes_sort_created_new),
+                () -> setSort("created_new"));
+        s.addItem((cur.equals("created_old") ? "✓ " : "") + getString(R.string.notes_sort_created_old),
+                () -> setSort("created_old"));
         s.addItem((cur.equals("title") ? "✓ " : "") + getString(R.string.notes_sort_title_az),
                 () -> setSort("title"));
         s.addItem((cur.equals("color") ? "✓ " : "") + getString(R.string.notes_sort_color),
@@ -394,6 +479,56 @@ public class NoteListFragment extends Fragment {
         }));
     }
 
+    /** Gabungkan catatan: pilih tujuan -> konfirmasi -> pindah isi+gambar+tag. */
+    private void showMergePicker(NoteEntity n) {
+        NoteRepository.get(requireContext()).getMergeTargets(n.id, targets -> main.post(() -> {
+            if (targets == null || targets.isEmpty()) {
+                Toast.makeText(requireContext(),
+                        R.string.merge_none, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            final java.util.List<NoteEntity> list = new java.util.ArrayList<>(targets);
+            String[] titles = new String[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                NoteEntity t = list.get(i);
+                String tt = (t.title == null || t.title.trim().isEmpty())
+                        ? getString(R.string.notes_no_title) : t.title.trim();
+                titles[i] = tt;
+            }
+            new android.app.AlertDialog.Builder(requireContext())
+                    .setTitle(R.string.merge_pick_target)
+                    .setItems(titles, (d, which) -> confirmMerge(n, list.get(which)))
+                    .setNegativeButton(R.string.cancel, null)
+                    .show();
+        }));
+    }
+
+    private void confirmMerge(NoteEntity src, NoteEntity target) {
+        String srcTitle = (src.title == null || src.title.trim().isEmpty())
+                ? getString(R.string.notes_no_title) : src.title.trim();
+        String tgtTitle = (target.title == null || target.title.trim().isEmpty())
+                ? getString(R.string.notes_no_title) : target.title.trim();
+        new IosDialog(requireContext())
+                .setTitle(getString(R.string.merge_confirm_title))
+                .setMessage(getString(R.string.merge_confirm_msg, srcTitle, tgtTitle))
+                .setNegative(getString(R.string.cancel), null)
+                .setPositive(getString(R.string.merge_do), () -> doMerge(src, target))
+                .show();
+    }
+
+    private void doMerge(NoteEntity src, NoteEntity target) {
+        NoteRepository.get(requireContext()).mergeNote(src.id, target.id, ok -> main.post(() -> {
+            if (Boolean.TRUE.equals(ok)) {
+                Toast.makeText(requireContext(),
+                        R.string.merge_done, Toast.LENGTH_SHORT).show();
+                adapter.refresh();
+            } else {
+                Toast.makeText(requireContext(),
+                        R.string.merge_fail, Toast.LENGTH_SHORT).show();
+            }
+        }));
+    }
+
     /** Sematkan/lepas catatan sebagai notifikasi persisten (ala nproth/pin). */
     private void togglePinnedNotification(NoteEntity n) {
         if (PinnedNoteManager.isPinned(requireContext(), n.id)) {
@@ -448,6 +583,7 @@ public class NoteListFragment extends Fragment {
                         () -> togglePinnedNotification(n))
                 .addItem(getString(R.string.share), () -> shareNoteFull(n))
                 .addItem(getString(R.string.duplicate), () -> duplicateNote(n))
+                .addItem(getString(R.string.merge_note), () -> showMergePicker(n))
                 .addItem(getString(R.string.notes_color_title), () -> showColorSheet(n))
                 .addDestructive(getString(R.string.delete), () -> confirmDelete(n))
                 .show();

@@ -17,12 +17,14 @@ import android.os.Looper;
 import android.text.Editable;
 import android.text.Html;
 import android.text.Layout;
+import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.text.style.CharacterStyle;
 import android.text.style.ParagraphStyle;
+import android.text.style.RelativeSizeSpan;
 import android.text.style.StrikethroughSpan;
 import android.text.style.StyleSpan;
 import android.text.util.Linkify;
@@ -137,7 +139,13 @@ public class EditorActivity extends AppCompatActivity {
     // Cari dalam catatan
     private ScrollView editorScroll;
     private LinearLayout findBar;
-    private EditText findInput;
+
+    // Sketsa & pratinjau
+    private TextView previewContent;
+    private TextView previewLabel;
+    private View titleDivider;
+    private boolean previewMode = false;
+    private ActivityResultLauncher<Intent> sketchLauncher;    private EditText findInput;
     private TextView findCount;
     private TextView wordCountView;
     private final List<int[]> findMatches = new ArrayList<>();
@@ -169,6 +177,9 @@ public class EditorActivity extends AppCompatActivity {
         // URL bisa di-tap langsung dari editor (tanpa merusak kursor/seleksi).
         Linkify.addLinks(contentInput, Linkify.WEB_URLS);
         contentInput.setMovementMethod(LinkTouchMovementMethod.getInstance());
+        // Ukuran huruf editor mengikuti preferensi (Pengaturan → Tampilan).
+        contentInput.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP,
+                SettingsActivity.editorFontSize(this));
 
         galleryLauncher = registerForActivityResult(
                 new ActivityResultContracts.GetContent(), uri -> {
@@ -244,6 +255,23 @@ public class EditorActivity extends AppCompatActivity {
                 });
         findViewById(R.id.btn_audio).setOnClickListener(v -> onAudioButton());
 
+        // Sketsa: gambar bebas lalu simpan sebagai gambar catatan.
+        sketchLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(), result -> {
+                    if (result.getResultCode() == RESULT_OK) {
+                        refreshImages();
+                        Toast.makeText(this, R.string.sketch_saved,
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+        findViewById(R.id.btn_sketch).setOnClickListener(v -> openSketch());
+
+        // Pratinjau: mode baca read-only dari isi editor.
+        previewContent = findViewById(R.id.preview_content);
+        previewLabel = findViewById(R.id.tv_preview);
+        titleDivider = findViewById(R.id.title_divider);
+        findViewById(R.id.btn_preview).setOnClickListener(v -> togglePreview());
+
         // Bar cari dalam catatan + penghitung kata
         editorScroll = findViewById(R.id.editor_scroll);
         findBar = findViewById(R.id.find_bar);
@@ -272,6 +300,9 @@ public class EditorActivity extends AppCompatActivity {
                 updateUndoRedoButtons();
                 refreshImages();
                 refreshAudio();
+                // v1.14: dibuka dari hasil pencarian — tampilkan bar cari dengan
+                // kata kunci pencarian terisi agar cocok langsung tersorot.
+                autoOpenFindFromSearch();
             }));
         } else {
             note = newNote();
@@ -395,6 +426,22 @@ public class EditorActivity extends AppCompatActivity {
         Editable e = contentInput.getText();
         String prefix = (pos > 0 && e.charAt(pos - 1) != '\n') ? "\n" : "";
         e.insert(pos, prefix + "- [ ] ");
+        scheduleSave();
+    }
+
+    /**
+     * Sisipkan cap tanggal &amp; waktu sekarang di posisi kursor.
+     * Format ala Indonesia, mis. "15 Okt 2026 09:12".
+     */
+    private void insertDateTime() {
+        if (previewMode) togglePreview();
+        if (note == null) return;
+        String stamp = new java.text.SimpleDateFormat("d MMM yyyy HH:mm",
+                new Locale("id", "ID")).format(new java.util.Date());
+        int pos = Math.max(contentInput.getSelectionStart(), 0);
+        Editable e = contentInput.getText();
+        String prefix = (pos > 0 && e.charAt(pos - 1) != '\n') ? "\n" : "";
+        e.insert(pos, prefix + stamp);
         scheduleSave();
     }
 
@@ -1569,9 +1616,11 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.notes_tags_title), this::showTagsDialog)
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
                 .addItem(getString(R.string.editor_find_in_note), this::showFindBar)
+                .addItem(getString(R.string.editor_insert_datetime), this::insertDateTime)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.export_md), this::exportMarkdown)
+                .addItem(getString(R.string.export_html), this::exportHtml)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
                 .addItem(getString(R.string.checklist_sort_checked), this::sortCheckedToBottom)
                 .addItem(getString(R.string.checklist_clear_checked), this::clearCheckedItems)
@@ -1589,6 +1638,58 @@ public class EditorActivity extends AppCompatActivity {
                 })
                 .addDestructive(getString(R.string.delete), this::confirmDelete)
                 .show();
+    }
+
+    // ---------- sketsa ----------
+
+    /** Buka kanvas sketsa; pastikan note sudah tersimpan dulu. */
+    private void openSketch() {
+        if (previewMode) togglePreview();
+        withNoteId(id -> {
+            Intent i = new Intent(this, SketchActivity.class);
+            i.putExtra("noteId", id);
+            sketchLauncher.launch(i);
+        });
+    }
+
+    // ---------- pratinjau ----------
+
+    /**
+     * Toggle mode pratinjau: tampilkan isi catatan sebagai bacaan
+     * read-only (judul tebal + isi ter-render, link bisa di-tap).
+     */
+    private void togglePreview() {
+        previewMode = !previewMode;
+        if (previewMode) {
+            saveNow(); // flush perubahan yang masih tertunda
+            clearFindHighlights();
+            SpannableStringBuilder sb = new SpannableStringBuilder();
+            String t = titleInput.getText().toString().trim();
+            if (!t.isEmpty()) {
+                int s = sb.length();
+                sb.append(t);
+                sb.setSpan(new StyleSpan(Typeface.BOLD), s, sb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.setSpan(new RelativeSizeSpan(1.25f), s, sb.length(),
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                sb.append("\n\n");
+            }
+            sb.append(contentInput.getText());
+            previewContent.setText(sb);
+            previewContent.setMovementMethod(LinkTouchMovementMethod.getInstance());
+            titleInput.setVisibility(View.GONE);
+            titleDivider.setVisibility(View.GONE);
+            contentInput.setVisibility(View.GONE);
+            previewContent.setVisibility(View.VISIBLE);
+            previewLabel.setText(R.string.preview_edit);
+            editorScroll.scrollTo(0, 0);
+        } else {
+            previewContent.setVisibility(View.GONE);
+            titleInput.setVisibility(View.VISIBLE);
+            titleDivider.setVisibility(View.VISIBLE);
+            contentInput.setVisibility(View.VISIBLE);
+            previewLabel.setText(R.string.preview_title);
+        }
     }
 
     // ---------- cari dalam catatan ----------
@@ -1611,6 +1712,15 @@ public class EditorActivity extends AppCompatActivity {
         findBar.setVisibility(View.GONE);
         findInput.setText("");
         clearFindHighlights();
+    }
+
+    /** Dibuka dari SearchActivity: isi bar cari dengan kata kunci & tampilkan. */
+    private void autoOpenFindFromSearch() {
+        String q = getIntent().getStringExtra("findQuery");
+        if (q == null || q.trim().isEmpty()) return;
+        showFindBar();
+        findInput.setText(q.trim());
+        findInput.setSelection(findInput.getText().length());
     }
 
     private void clearFindHighlights() {
@@ -1783,6 +1893,14 @@ public class EditorActivity extends AppCompatActivity {
                 note.content == null ? "" : note.content, note.contentHtml);
     }
 
+    /** Ekspor catatan ini menjadi HTML (.html) lalu bagikan. */
+    private void exportHtml() {
+        if (note == null) return;
+        saveNow(); // sinkronkan field dulu
+        HtmlExporter.exportAndShare(this, displayTitle(),
+                note.content == null ? "" : note.content, note.contentHtml);
+    }
+
     /** Duplikat catatan ini (teks + tag + warna + folder). */
     private void duplicateNote() {
         if (note == null) return;
@@ -1886,6 +2004,9 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.reminder_repeat_weekly),
                         () -> applyReminder(when,
                                 com.hozinking.notes.reminder.ReminderScheduler.REPEAT_WEEKLY))
+                .addItem(getString(R.string.reminder_repeat_monthly),
+                        () -> applyReminder(when,
+                                com.hozinking.notes.reminder.ReminderScheduler.REPEAT_MONTHLY))
                 .show();
     }
 
@@ -1905,6 +2026,9 @@ public class EditorActivity extends AppCompatActivity {
         }
         if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_WEEKLY) {
             return getString(R.string.reminder_repeat_weekly);
+        }
+        if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_MONTHLY) {
+            return getString(R.string.reminder_repeat_monthly);
         }
         return getString(R.string.reminder_repeat_once);
     }

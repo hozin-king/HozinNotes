@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.paging.PagingDataAdapter;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 
 import com.hozinking.notes.R;
 import com.hozinking.notes.data.db.ImageRefEntity;
@@ -27,33 +28,48 @@ import java.util.Date;
 import java.util.Locale;
 
 /**
- * Adapter paging untuk daftar catatan. Thumbnail tajam 512px dimuat async
- * dari repo (getImages -> loadThumbPlain, fallback loadImagePlain)
- * dengan proteksi recycling ViewHolder.
+ * Adapter paging untuk daftar catatan. Mendukung dua jenis baris:
+ * kartu catatan biasa dan header seksi waktu ("Hari ini", "Kemarin",
+ * ...). Di mode grid, header otomatis full-span satu baris.
+ * Thumbnail tajam 512px dimuat async dari repo (getImages ->
+ * loadThumbPlain, fallback loadImagePlain) dengan proteksi recycling
+ * ViewHolder.
  */
-public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
+public class NoteAdapter extends PagingDataAdapter<NoteListItem, RecyclerView.ViewHolder> {
 
     public interface Listener {
         void onClick(NoteEntity note);
         void onLongClick(NoteEntity note, View anchor);
     }
 
-    private static final DiffUtil.ItemCallback<NoteEntity> DIFF =
-            new DiffUtil.ItemCallback<NoteEntity>() {
+    private static final int TYPE_NOTE = 0;
+    private static final int TYPE_HEADER = 1;
+
+    private static final DiffUtil.ItemCallback<NoteListItem> DIFF =
+            new DiffUtil.ItemCallback<NoteListItem>() {
                 @Override
-                public boolean areItemsTheSame(@NonNull NoteEntity a, @NonNull NoteEntity b) {
-                    return a.id == b.id;
+                public boolean areItemsTheSame(@NonNull NoteListItem a,
+                                              @NonNull NoteListItem b) {
+                    if (a.isHeader() != b.isHeader()) return false;
+                    if (a.isHeader()) return a.header.equals(b.header);
+                    if (a.note == null || b.note == null) return a == b;
+                    return a.note.id == b.note.id;
                 }
 
                 @Override
-                public boolean areContentsTheSame(@NonNull NoteEntity a, @NonNull NoteEntity b) {
-                    return a.updatedAt == b.updatedAt
-                            && strEq(a.title, b.title)
-                            && strEq(a.content, b.content)
-                            && a.pinned == b.pinned
-                            && a.color == b.color
-                            && a.imageCount == b.imageCount
-                            && a.reminderTime == b.reminderTime;
+                public boolean areContentsTheSame(@NonNull NoteListItem a,
+                                                  @NonNull NoteListItem b) {
+                    if (a.isHeader() != b.isHeader()) return false;
+                    if (a.isHeader()) return a.header.equals(b.header);
+                    if (a.note == null || b.note == null) return a.note == b.note;
+                    NoteEntity x = a.note, y = b.note;
+                    return x.updatedAt == y.updatedAt
+                            && strEq(x.title, y.title)
+                            && strEq(x.content, y.content)
+                            && x.pinned == y.pinned
+                            && x.color == y.color
+                            && x.imageCount == y.imageCount
+                            && x.reminderTime == y.reminderTime;
                 }
 
                 private boolean strEq(String x, String y) {
@@ -73,20 +89,62 @@ public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
         this.listener = listener;
     }
 
+    @Override
+    public int getItemViewType(int position) {
+        NoteListItem it = getItem(position);
+        return (it != null && it.isHeader()) ? TYPE_HEADER : TYPE_NOTE;
+    }
+
     @NonNull
     @Override
-    public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == TYPE_HEADER) {
+            View v = LayoutInflater.from(parent.getContext())
+                    .inflate(R.layout.item_note_header, parent, false);
+            return new HeaderVH(v);
+        }
         View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_note, parent, false);
-        return new VH(v);
+        return new NoteVH(v);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull VH holder, int position) {
-        holder.bind(getItem(position));
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        NoteListItem it = getItem(position);
+        if (holder instanceof HeaderVH) {
+            ((HeaderVH) holder).bind(it == null ? null : it.header);
+        } else if (holder instanceof NoteVH) {
+            ((NoteVH) holder).bind(it == null ? null : it.note);
+        }
     }
 
-    class VH extends RecyclerView.ViewHolder {
+    @Override
+    public void onViewAttachedToWindow(@NonNull RecyclerView.ViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        // Header seksi selalu selebar layar walau daftar sedang mode grid.
+        if (holder instanceof HeaderVH) {
+            ViewGroup.LayoutParams lp = holder.itemView.getLayoutParams();
+            if (lp instanceof StaggeredGridLayoutManager.LayoutParams) {
+                ((StaggeredGridLayoutManager.LayoutParams) lp).setFullSpan(true);
+            }
+        }
+    }
+
+    /** Header seksi waktu: label kecil di atas kelompok catatan. */
+    class HeaderVH extends RecyclerView.ViewHolder {
+        private final TextView label;
+
+        HeaderVH(@NonNull View v) {
+            super(v);
+            label = v.findViewById(R.id.header_label);
+        }
+
+        void bind(String text) {
+            label.setText(text == null ? "" : text);
+        }
+    }
+
+    class NoteVH extends RecyclerView.ViewHolder {
         private final com.google.android.material.card.MaterialCardView card;
         private final TextView title;
         private final TextView preview;
@@ -99,7 +157,7 @@ public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
         private final int defaultTitleColor;
         private final int defaultSubColor;
 
-        VH(@NonNull View v) {
+        NoteVH(@NonNull View v) {
             super(v);
             card = v.findViewById(R.id.card);
             title = v.findViewById(R.id.title);
@@ -117,13 +175,13 @@ public class NoteAdapter extends PagingDataAdapter<NoteEntity, NoteAdapter.VH> {
             defaultSubColor = ta.getColor(1, 0xFFB0B0B0);
             ta.recycle();
             v.setOnClickListener(x -> {
-                NoteEntity n = getItem(getBindingAdapterPosition());
-                if (n != null) listener.onClick(n);
+                NoteListItem it = getItem(getBindingAdapterPosition());
+                if (it != null && it.note != null) listener.onClick(it.note);
             });
             v.setOnLongClickListener(x -> {
-                NoteEntity n = getItem(getBindingAdapterPosition());
-                if (n != null) {
-                    listener.onLongClick(n, x);
+                NoteListItem it = getItem(getBindingAdapterPosition());
+                if (it != null && it.note != null) {
+                    listener.onLongClick(it.note, x);
                     return true;
                 }
                 return false;

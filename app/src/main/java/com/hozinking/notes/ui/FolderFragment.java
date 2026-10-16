@@ -310,6 +310,7 @@ public class FolderFragment extends Fragment {
         }
         liveData = PagingLiveData.getLiveData(pager);
         liveData.observe(getViewLifecycleOwner(),
-                pagingData -> adapter.submitData(getViewLifecycleOwner().getLifecycle(), pagingData));
+                pagingData -> adapter.submitData(getViewLifecycleOwner().getLifecycle(),
+                        PagingXforms.map(pagingData, NoteListItem::ofNote)));
     }
 }

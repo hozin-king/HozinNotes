@@ -22,6 +22,15 @@ public interface NoteDao {
             + "ORDER BY pinned DESC, updatedAt ASC")
     PagingSource<Integer, NoteEntity> pagingActiveOldest();
 
+    /** v1.16: urut berdasarkan TANGGAL DIBUAT (bukan diubah). */
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
+            + "ORDER BY pinned DESC, createdAt DESC")
+    PagingSource<Integer, NoteEntity> pagingActiveCreated();
+
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
+            + "ORDER BY pinned DESC, createdAt ASC")
+    PagingSource<Integer, NoteEntity> pagingActiveCreatedOld();
+
     @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
             + "ORDER BY pinned DESC, title COLLATE NOCASE ASC")
     PagingSource<Integer, NoteEntity> pagingActiveTitle();
@@ -57,6 +66,23 @@ public interface NoteDao {
             + "ORDER BY n.pinned DESC, n.updatedAt ASC")
     PagingSource<Integer, NoteEntity> pagingByTagOldest(long tagId);
 
+    /** v1.16: filter tag + urut tanggal dibuat. */
+    @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
+            + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
+            + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
+            + "ORDER BY n.pinned DESC, n.createdAt DESC")
+    PagingSource<Integer, NoteEntity> pagingByTagCreated(long tagId);
+
+    @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
+            + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
+            + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
+            + "ORDER BY n.pinned DESC, n.createdAt ASC")
+    PagingSource<Integer, NoteEntity> pagingByTagCreatedOld(long tagId);
+
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
             + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
@@ -84,6 +110,11 @@ public interface NoteDao {
     @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
             + "ORDER BY pinned DESC, updatedAt DESC LIMIT 1")
     NoteEntity getLatestActive();
+
+    /** Kandidat tujuan gabung catatan: catatan aktif lain, terbaru dulu (dibatasi). */
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 AND id<>:excludeId "
+            + "ORDER BY pinned DESC, updatedAt DESC LIMIT :limit")
+    List<NoteEntity> mergeTargets(long excludeId, int limit);
 
     @Query("SELECT * FROM notes ORDER BY updatedAt DESC")
     List<NoteEntity> getAllForBackup();

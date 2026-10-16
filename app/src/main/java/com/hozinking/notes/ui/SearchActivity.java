@@ -31,6 +31,8 @@ public class SearchActivity extends AppCompatActivity {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Runnable pending;
     private LiveData<PagingData<NoteEntity>> liveData;
+    /** Kata kunci terakhir — diteruskan ke editor agar cocok langsung tersorot. */
+    private String lastQuery = "";
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -67,10 +69,11 @@ public class SearchActivity extends AppCompatActivity {
 
     private void doSearch(String query) {
         String q = query.trim();
+        lastQuery = q;
         if (liveData != null) liveData.removeObservers(this);
         if (q.isEmpty()) {
             liveData = null;
-            adapter.submitData(getLifecycle(), PagingData.<NoteEntity>empty());
+            adapter.submitData(getLifecycle(), PagingData.<NoteListItem>empty());
             hintView.setVisibility(View.VISIBLE);
             return;
         }
@@ -80,12 +83,15 @@ public class SearchActivity extends AppCompatActivity {
                 () -> NoteRepository.get(this).searchFts(q));
         liveData = PagingLiveData.getLiveData(pager);
         liveData.observe(this,
-                pagingData -> adapter.submitData(getLifecycle(), pagingData));
+                pagingData -> adapter.submitData(getLifecycle(),
+                        PagingXforms.map(pagingData, NoteListItem::ofNote)));
     }
 
     private void openEditor(long id) {
         Intent i = new Intent(this, EditorActivity.class);
         i.putExtra("noteId", id);
+        // v1.14: editor membuka bar cari berisi kata kunci hasil pencarian.
+        if (!lastQuery.isEmpty()) i.putExtra("findQuery", lastQuery);
         startActivity(i);
     }
 
