@@ -13,6 +13,7 @@ import androidx.lifecycle.LiveData;
 import androidx.paging.Pager;
 import androidx.paging.PagingConfig;
 import androidx.paging.PagingData;
+import androidx.paging.PagingDataKt;
 import androidx.paging.PagingLiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -84,7 +85,7 @@ public class SearchActivity extends AppCompatActivity {
         liveData = PagingLiveData.getLiveData(pager);
         liveData.observe(this,
                 pagingData -> adapter.submitData(getLifecycle(),
-                        pagingData.map(NoteListItem::ofNote)));
+                        PagingDataKt.map(pagingData, NoteListItem::ofNote)));
     }
 
     private void openEditor(long id) {
