@@ -12,7 +12,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.paging.LoadState;
 import androidx.paging.Pager;
 import androidx.paging.PagingConfig;
-import androidx.paging.PagingDataKt;
 import androidx.paging.PagingLiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -65,7 +64,7 @@ public class ArchiveActivity extends AppCompatActivity {
                 () -> NoteRepository.get(this).pagingArchived());
         PagingLiveData.getLiveData(pager).observe(this,
                 pagingData -> adapter.submitData(getLifecycle(),
-                        PagingDataKt.map(pagingData, NoteListItem::ofNote)));
+                        PagingXforms.map(pagingData, NoteListItem::ofNote)));
     }
 
     private void openEditor(long id) {

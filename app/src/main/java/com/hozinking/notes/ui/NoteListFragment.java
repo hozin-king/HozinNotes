@@ -26,7 +26,6 @@ import androidx.paging.LoadState;
 import androidx.paging.Pager;
 import androidx.paging.PagingConfig;
 import androidx.paging.PagingData;
-import androidx.paging.PagingDataKt;
 import androidx.paging.PagingLiveData;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -270,11 +269,11 @@ public class NoteListFragment extends Fragment {
         PagingLiveData.getLiveData(pager).observe(getViewLifecycleOwner(),
                 pagingData -> {
                     // v1.16: map/insertSeparators adalah extension Kotlin —
-                    // dari Java dipanggil via PagingDataKt.
+                    // dari Java dipanggil via PagingXforms.
                     PagingData<NoteListItem> items =
-                            PagingDataKt.map(pagingData, NoteListItem::ofNote);
+                            PagingXforms.map(pagingData, NoteListItem::ofNote);
                     if (dateSort) {
-                        items = PagingDataKt.insertSeparators(items,
+                        items = PagingXforms.insertSeparators(items,
                                 (before, after) -> separatorFor(before, after, useCreated));
                     }
                     adapter.submitData(getViewLifecycleOwner().getLifecycle(), items);

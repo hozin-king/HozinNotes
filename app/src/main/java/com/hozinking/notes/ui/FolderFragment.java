@@ -22,7 +22,6 @@ import android.util.TypedValue;
 import androidx.paging.Pager;
 import androidx.paging.PagingConfig;
 import androidx.paging.PagingData;
-import androidx.paging.PagingDataKt;
 import androidx.paging.PagingLiveData;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -312,6 +311,6 @@ public class FolderFragment extends Fragment {
         liveData = PagingLiveData.getLiveData(pager);
         liveData.observe(getViewLifecycleOwner(),
                 pagingData -> adapter.submitData(getViewLifecycleOwner().getLifecycle(),
-                        PagingDataKt.map(pagingData, NoteListItem::ofNote)));
+                        PagingXforms.map(pagingData, NoteListItem::ofNote)));
     }
 }
