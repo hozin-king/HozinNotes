@@ -12,7 +12,7 @@ import java.util.List;
 public interface NoteDao {
     String PROJECTION = "id,title,substr(content,1,180) AS content,"
             + "folderId,color,pinned,archived,trashed,isChecklist,imageCount,createdAt,updatedAt,"
-            + "reminderTime,reminderRepeat,locked,contentHtml";
+            + "reminderTime,reminderRepeat,locked,contentHtml,manualOrder";
 
     @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
             + "ORDER BY pinned DESC, updatedAt DESC")
@@ -81,7 +81,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.updatedAt DESC")
@@ -89,7 +89,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.updatedAt ASC")
@@ -98,7 +98,7 @@ public interface NoteDao {
     /** v1.16: filter tag + urut tanggal dibuat. */
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.createdAt DESC")
@@ -106,7 +106,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.createdAt ASC")
@@ -114,7 +114,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.title COLLATE NOCASE ASC")
@@ -122,7 +122,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.color ASC, n.updatedAt DESC")
@@ -131,7 +131,7 @@ public interface NoteDao {
     /** v1.17: filter tag + urutan manual. */
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.manualOrder ASC, n.id DESC")
@@ -139,7 +139,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n JOIN notes_fts f ON n.id=f.rowid "
             + "WHERE notes_fts MATCH :q AND n.trashed=0 "
             + "ORDER BY n.updatedAt DESC")
