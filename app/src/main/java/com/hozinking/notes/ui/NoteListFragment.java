@@ -65,7 +65,7 @@ public class NoteListFragment extends Fragment {
     private static final String PREFS = "notes_view_prefs";
     private static final String KEY_VIEW_MODE = "view_mode"; // grid | list
     // v1.16: tambah "created_new" | "created_old" (urut tanggal dibuat).
-    private static final String KEY_SORT = "sort"; // newest | oldest | title | color | created_new | created_old
+    private static final String KEY_SORT = "sort"; // newest | oldest | title | color | created_new | created_old | manual
 
     // Sematkan catatan di notifikasi (izin POST_NOTIFICATIONS API 33+).
     private static final int RC_NOTIF_PIN = 3001;
@@ -247,6 +247,7 @@ public class NoteListFragment extends Fragment {
                     case "created_old": return r.pagingByTagCreatedOld(tid);
                     case "title": return r.pagingByTagTitle(tid);
                     case "color": return r.pagingByTagColor(tid);
+                    case "manual": return r.pagingByTagManual(tid);
                     default: return r.pagingByTag(tid);
                 }
             });
@@ -261,6 +262,7 @@ public class NoteListFragment extends Fragment {
                     case "created_old": return r.pagingActiveCreatedOld();
                     case "title": return r.pagingActiveTitle();
                     case "color": return r.pagingActiveColor();
+                    case "manual": return r.pagingActiveManual();
                     default: return r.pagingActive();
                 }
             });
@@ -385,6 +387,9 @@ public class NoteListFragment extends Fragment {
                 () -> setSort("title"));
         s.addItem((cur.equals("color") ? "✓ " : "") + getString(R.string.notes_sort_color),
                 () -> setSort("color"));
+        // v1.17: urutan manual — posisi diatur lewat menu tahan-lama tiap catatan.
+        s.addItem((cur.equals("manual") ? "✓ " : "") + getString(R.string.notes_sort_manual),
+                () -> setSort("manual"));
         s.show();
     }
 
@@ -572,9 +577,18 @@ public class NoteListFragment extends Fragment {
     private void showActions(NoteEntity n) {
         String title = (n.title == null || n.title.trim().isEmpty())
                 ? getString(R.string.notes_no_title) : n.title.trim();
-        new IosActionSheet(requireContext())
-                .setTitle(title)
-                .addItem(getString(n.pinned ? R.string.unpin : R.string.pin),
+        IosActionSheet sheet = new IosActionSheet(requireContext())
+                .setTitle(title);
+        // v1.17: di mode urut Manual, tawarkan pindah posisi.
+        if ("manual".equals(getSort())) {
+            sheet.addItem(getString(R.string.manual_move_top),
+                    () -> moveManualToTop(n.id));
+            sheet.addItem(getString(R.string.manual_move_up),
+                    () -> moveManual(n.id, -1));
+            sheet.addItem(getString(R.string.manual_move_down),
+                    () -> moveManual(n.id, 1));
+        }
+        sheet.addItem(getString(n.pinned ? R.string.unpin : R.string.pin),
                         () -> { n.pinned = !n.pinned; persist(n); })
                 .addItem(getString(R.string.archive),
                         () -> { n.archived = true; persist(n); })
@@ -587,6 +601,32 @@ public class NoteListFragment extends Fragment {
                 .addItem(getString(R.string.notes_color_title), () -> showColorSheet(n))
                 .addDestructive(getString(R.string.delete), () -> confirmDelete(n))
                 .show();
+    }
+
+    /** v1.17: pindah satu langkah dalam urutan manual, lalu muat ulang daftar. */
+    private void moveManual(long id, int dir) {
+        NoteRepository.get(requireContext()).moveManual(id, dir, moved ->
+                main.post(() -> {
+                    if (moved) {
+                        adapter.refresh();
+                    } else {
+                        Toast.makeText(requireContext(),
+                                R.string.manual_move_edge, Toast.LENGTH_SHORT).show();
+                    }
+                }));
+    }
+
+    /** v1.17: pindah ke paling atas urutan manual. */
+    private void moveManualToTop(long id) {
+        NoteRepository.get(requireContext()).moveManualToTop(id, moved ->
+                main.post(() -> {
+                    if (moved) {
+                        adapter.refresh();
+                    } else {
+                        Toast.makeText(requireContext(),
+                                R.string.manual_move_edge, Toast.LENGTH_SHORT).show();
+                    }
+                }));
     }
 
     private void showColorSheet(NoteEntity n) {

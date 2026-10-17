@@ -195,6 +195,7 @@ public class NoteImporter {
         n.createdAt = parseEnDate(enDate, created);
         n.updatedAt = parseEnDate(enDate, updated);
         if (n.updatedAt == 0) n.updatedAt = n.createdAt;
+        n.manualOrder = -(double) n.createdAt; // v1.17: posisi awal mode Manual
         long id = noteDao.insert(n);
         insertTags(tagDao, id, tags);
     }
@@ -505,6 +506,7 @@ public class NoteImporter {
             n.trashed = k.trashed;
             n.createdAt = k.createdAt;
             n.updatedAt = k.updatedAt != 0 ? k.updatedAt : k.createdAt;
+            n.manualOrder = -(double) n.createdAt; // v1.17: posisi awal mode Manual
             long id = noteDao.insert(n);
             insertTags(tagDao, id, k.labels);
             r.imported++;

@@ -37,4 +37,9 @@ public class NoteEntity {
     public boolean locked;
     /** true bila content disimpan sebagai HTML (teks berformat/tabel). */
     public boolean contentHtml;
+    /**
+     * v1.17: urutan manual (mode urut "Manual"). Nilai lebih kecil = lebih atas.
+     * Catatan baru diisi -(createdAt) agar awalnya meniru urutan "Terbaru".
+     */
+    public double manualOrder;
 }
