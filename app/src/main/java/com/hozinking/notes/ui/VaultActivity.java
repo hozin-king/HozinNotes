@@ -40,15 +40,23 @@ import java.util.Date;
  */
 public class VaultActivity extends AppCompatActivity {
 
+    /** True = buka tampilan vault kosong (hasil PIN kamuflase). */
+    public static final String EXTRA_DECOY = "mode_decoy";
+
     private NoteRepository repo;
     private VaultAdapter adapter;
     private TextView emptyView;
+    private boolean decoyMode;
 
     private final ActivityResultLauncher<Intent> authLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
                     result -> {
                         if (result.getResultCode() != RESULT_OK) {
                             finish(); // Auth gagal/dibatalkan -> tutup.
+                        } else if (result.getData() != null
+                                && result.getData().getBooleanExtra(
+                                        VaultPinActivity.EXTRA_DECOY_USED, false)) {
+                            enterDecoyMode(); // PIN kamuflase via auth internal.
                         }
                     });
 
@@ -65,6 +73,15 @@ public class VaultActivity extends AppCompatActivity {
         RecyclerView recycler = findViewById(R.id.recycler);
         emptyView = findViewById(R.id.empty_view);
         recycler.setLayoutManager(new LinearLayoutManager(this));
+
+        FloatingActionButton fab = findViewById(R.id.fab);
+
+        decoyMode = getIntent().getBooleanExtra(EXTRA_DECOY, false);
+        if (decoyMode) {
+            applyDecoyMode(fab);
+            return; // Lewati auth & data asli: vault tampak kosong.
+        }
+
         adapter = new VaultAdapter();
         recycler.setAdapter(adapter);
         adapter.addLoadStateListener(loadStates -> {
@@ -78,13 +95,27 @@ public class VaultActivity extends AppCompatActivity {
                 new Pager<>(new PagingConfig(60), () -> repo.vaultPaging());
         PagingLiveData.getLiveData(pager).observe(this, pagingData -> adapter.submitData(getLifecycle(), pagingData));
 
-        FloatingActionButton fab = findViewById(R.id.fab);
         fab.setOnClickListener(v -> promptNewNote());
 
         // Selalu minta auth tiap dibuka; buat PIN dulu bila belum ada.
         Intent auth = new Intent(this, VaultPinActivity.class);
         auth.putExtra(VaultPinActivity.EXTRA_MODE_SET, !VaultPinActivity.isPinSet(this));
         authLauncher.launch(auth);
+    }
+
+    /**
+     * Mode kamuflase: tampilkan vault yang tampak kosong — tidak ada data asli
+     * yang dimuat, tidak ada aksi tulis. Tampilan identik dengan vault kosong
+     * sungguhan (plausible deniability).
+     */
+    private void enterDecoyMode() {
+        decoyMode = true;
+        applyDecoyMode(findViewById(R.id.fab));
+    }
+
+    private void applyDecoyMode(FloatingActionButton fab) {
+        if (fab != null) fab.setVisibility(View.GONE);
+        emptyView.setVisibility(View.VISIBLE);
     }
 
     private void promptNewNote() {

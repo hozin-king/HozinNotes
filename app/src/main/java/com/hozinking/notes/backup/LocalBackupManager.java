@@ -162,6 +162,7 @@ public class LocalBackupManager {
             o.put("imageCount", n.imageCount);
             o.put("createdAt", n.createdAt);
             o.put("updatedAt", n.updatedAt);
+            o.put("manualOrder", n.manualOrder); // v1.17: jaga urutan manual
             jNotes.put(o);
 
             List<TagEntity> nt = await(cb -> repo.getTagsForNote(n.id, cb));
@@ -399,6 +400,7 @@ public class LocalBackupManager {
                     long now = System.currentTimeMillis();
                     ne.createdAt = o.optLong("createdAt", now);
                     ne.updatedAt = o.optLong("updatedAt", now);
+                    ne.manualOrder = o.optDouble("manualOrder", 0); // v1.17 (0 = fallback di insertNote)
                     final NoteEntity neF = ne;
                     Long newId = await(cb2 -> repo.insertNote(neF, cb2));
                     if (newId == null || newId <= 0)

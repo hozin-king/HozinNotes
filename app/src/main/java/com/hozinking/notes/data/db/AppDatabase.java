@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
         TagEntity.class,
         NoteTagCrossRef.class,
         NoteFts.class
-}, version = 6, exportSchema = false)
+}, version = 7, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -55,6 +55,18 @@ public abstract class AppDatabase extends RoomDatabase {
     };
 
     /**
+     * v6 -> v7: kolom manualOrder (REAL) untuk mode urut "Manual" (v1.17).
+     * Backfill: -(createdAt) agar urutan awal meniru "Terbaru dulu".
+     * Kolom baru + backfill deterministik — data lama aman.
+     */
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("ALTER TABLE notes ADD COLUMN manualOrder REAL NOT NULL DEFAULT 0");
+            db.execSQL("UPDATE notes SET manualOrder = -createdAt");
+        }
+    };
+    /**
      * v5 -> v6: tabel rekaman suara (audio_refs) untuk fitur Rekaman Suara.
      * Tabel BARU — data lama tidak tersentuh, migrasi aman.
      */
@@ -90,7 +102,7 @@ public abstract class AppDatabase extends RoomDatabase {
                     instance = Room.databaseBuilder(app, AppDatabase.class, "hozin_notes.db")
                             .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                                    MIGRATION_4_5, MIGRATION_5_6)
+                                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
                             .build();
                 }
             }

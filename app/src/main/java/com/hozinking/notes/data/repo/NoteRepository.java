@@ -15,6 +15,7 @@ import com.hozinking.notes.data.db.FolderDao;
 import com.hozinking.notes.data.db.FolderEntity;
 import com.hozinking.notes.data.db.ImageDao;
 import com.hozinking.notes.data.db.ImageRefEntity;
+import com.hozinking.notes.data.db.ManualNeighbor;
 import com.hozinking.notes.data.db.NoteDao;
 import com.hozinking.notes.data.db.NoteEntity;
 import com.hozinking.notes.data.db.NoteTagCrossRef;
@@ -63,6 +64,7 @@ public class NoteRepository {
     }
 
     private final Context appCtx;
+    private final AppDatabase db;
     private final NoteDao noteDao;
     private final ImageDao imageDao;
     private final AudioDao audioDao;
@@ -74,6 +76,7 @@ public class NoteRepository {
     private NoteRepository(Context ctx) {
         appCtx = ctx.getApplicationContext();
         AppDatabase db = AppDatabase.get(appCtx);
+        this.db = db;
         noteDao = db.noteDao();
         imageDao = db.imageDao();
         audioDao = db.audioDao();
@@ -100,6 +103,8 @@ public class NoteRepository {
             long now = System.currentTimeMillis();
             if (n.createdAt == 0) n.createdAt = now;
             if (n.updatedAt == 0) n.updatedAt = now;
+            // v1.17: catatan baru mulai di posisi teratas mode Manual.
+            if (n.manualOrder == 0) n.manualOrder = -(double) n.createdAt;
             cb.onResult(noteDao.insert(n));
         });
     }
@@ -165,6 +170,7 @@ public class NoteRepository {
                 long now = System.currentTimeMillis();
                 n.createdAt = now;
                 n.updatedAt = now;
+                n.manualOrder = -(double) now; // v1.17: salinan mulai di teratas mode Manual
                 long newId = noteDao.insert(n);
                 List<TagEntity> tags = tagDao.forNote(id);
                 if (tags != null) {
@@ -361,6 +367,11 @@ public class NoteRepository {
         return noteDao.pagingActiveColor();
     }
 
+    /** v1.17: urutan manual. */
+    public PagingSource<Integer, NoteEntity> pagingActiveManual() {
+        return noteDao.pagingActiveManual();
+    }
+
     public PagingSource<Integer, NoteEntity> pagingArchived() {
         return noteDao.pagingArchived();
     }
@@ -396,6 +407,62 @@ public class NoteRepository {
 
     public PagingSource<Integer, NoteEntity> pagingByTagColor(long tagId) {
         return noteDao.pagingByTagColor(tagId);
+    }
+
+    /** v1.17: filter tag + urutan manual. */
+    public PagingSource<Integer, NoteEntity> pagingByTagManual(long tagId) {
+        return noteDao.pagingByTagManual(tagId);
+    }
+
+    /**
+     * v1.17: pindah posisi catatan dalam urutan manual.
+     * dir &lt; 0 = ke atas satu langkah, dir &gt; 0 = ke bawah satu langkah.
+     * Tukar nilai manualOrder dengan tetangga dalam grup pinned yang sama,
+     * di dalam satu transaksi. Callback true bila posisi berubah.
+     */
+    public void moveManual(long id, int dir, Cb<Boolean> cb) {
+        io.execute(() -> {
+            boolean moved = false;
+            try {
+                final boolean[] out = new boolean[1];
+                db.runInTransaction(() -> {
+                    NoteEntity n = noteDao.getById(id);
+                    if (n == null || n.trashed || n.archived) return;
+                    ManualNeighbor nb = dir < 0
+                            ? noteDao.manualAbove(n.pinned, n.manualOrder)
+                            : noteDao.manualBelow(n.pinned, n.manualOrder);
+                    if (nb == null) return;
+                    noteDao.setManualOrder(id, nb.manualOrder);
+                    noteDao.setManualOrder(nb.id, n.manualOrder);
+                    out[0] = true;
+                });
+                moved = out[0];
+            } catch (Exception ignored) {
+            }
+            cb.onResult(moved);
+        });
+    }
+
+    /** v1.17: pindah catatan ke posisi paling atas urutan manual (grup pinned sama). */
+    public void moveManualToTop(long id, Cb<Boolean> cb) {
+        io.execute(() -> {
+            boolean moved = false;
+            try {
+                final boolean[] out = new boolean[1];
+                db.runInTransaction(() -> {
+                    NoteEntity n = noteDao.getById(id);
+                    if (n == null || n.trashed || n.archived) return;
+                    Double min = noteDao.minManualOrder(n.pinned);
+                    if (min == null) return;
+                    if (n.manualOrder <= min) return; // sudah paling atas
+                    noteDao.setManualOrder(id, min - 1);
+                    out[0] = true;
+                });
+                moved = out[0];
+            } catch (Exception ignored) {
+            }
+            cb.onResult(moved);
+        });
     }
 
     /** Sanitasi input user untuk query FTS: buang kutip, tambah wildcard prefix. */
@@ -437,6 +504,21 @@ public class NoteRepository {
                     }
                 }
             }
+        });
+    }
+
+    /**
+     * Simpan bytes gambar mentah sebagai lampiran terenkripsi catatan
+     * (dipakai impor .enex; bytes sudah tervalidasi pengirim).
+     * Berjalan di thread executor internal; callback di thread yang sama.
+     */
+    public void addImageFromBytes(long noteId, byte[] plain, Cb<ImageRefEntity> cb) {
+        io.execute(() -> {
+            if (plain == null || plain.length == 0 || plain.length > MAX_IMAGE_BYTES) {
+                cb.onResult(null);
+                return;
+            }
+            saveImageBytes(noteId, plain, null, cb);
         });
     }
 

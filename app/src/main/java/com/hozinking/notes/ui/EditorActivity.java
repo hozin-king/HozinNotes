@@ -98,6 +98,7 @@ public class EditorActivity extends AppCompatActivity {
 
     private Uri cameraUri;
     private Uri liveVideoUri;
+    private NoteSpeaker speaker; // v1.17: bacakan catatan (TTS)
     private ActivityResultLauncher<String> galleryLauncher;
     private ActivityResultLauncher<Uri> cameraLauncher;
     private ActivityResultLauncher<Intent> liveVideoLauncher;
@@ -415,8 +416,18 @@ public class EditorActivity extends AppCompatActivity {
         }
         stopPlayback();
         dismissLivePreview();
+        if (speaker != null) speaker.stop(); // v1.17: hentikan bacaan TTS
         com.hozinking.notes.widget.NoteWidgetProvider.refreshAll(this);
         super.onPause();
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (speaker != null) {
+            speaker.shutdown();
+            speaker = null;
+        }
+        super.onDestroy();
     }
 
     // ---------- checklist ----------
@@ -1617,6 +1628,9 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
                 .addItem(getString(R.string.editor_find_in_note), this::showFindBar)
                 .addItem(getString(R.string.editor_insert_datetime), this::insertDateTime)
+                .addItem(getString(speaker != null && speaker.isSpeaking()
+                                ? R.string.editor_stop_reading : R.string.editor_read_aloud),
+                        this::toggleReadAloud)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.export_md), this::exportMarkdown)
@@ -1638,6 +1652,34 @@ public class EditorActivity extends AppCompatActivity {
                 })
                 .addDestructive(getString(R.string.delete), this::confirmDelete)
                 .show();
+    }
+
+    // ---------- v1.17: bacakan catatan (TTS) ----------
+
+    /** Toggle bacakan judul + isi catatan memakai TextToSpeech sistem. */
+    private void toggleReadAloud() {
+        if (speaker == null) speaker = new NoteSpeaker(this);
+        speaker.toggle(readableText());
+    }
+
+    /** Teks yang enak dibacakan: judul + isi tanpa penanda checklist/markdown. */
+    private String readableText() {
+        String raw = contentInput.getText().toString();
+        String plain;
+        if (note != null && note.contentHtml) {
+            try {
+                plain = android.text.Html.fromHtml(raw,
+                        android.text.Html.FROM_HTML_MODE_LEGACY).toString();
+            } catch (Exception e) {
+                plain = raw;
+            }
+        } else {
+            plain = raw;
+        }
+        // Buang penanda checklist "- [ ] "/"- [x] " agar TTS tidak mengejanya.
+        plain = plain.replaceAll("(?m)^\\s*- \\[[ xX]\\]\\s?", "");
+        String text = (displayTitle() + ". " + plain).trim();
+        return text;
     }
 
     // ---------- sketsa ----------

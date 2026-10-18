@@ -75,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
 
         // Cek pembaruan otomatis (max 1x/24 jam, diam bila tidak ada/gagal).
         com.hozinking.notes.update.UpdateChecker.maybeAutoCheck(this);
+        // v1.17: tawarkan pelaporan bila aplikasi crash di sesi sebelumnya.
+        com.hozinking.notes.util.CrashReporter.checkAndOffer(this);
     }
 
     @Override

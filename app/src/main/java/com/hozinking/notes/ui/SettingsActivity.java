@@ -202,6 +202,18 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        // ---------- PIN kamuflase Ruang Privat ----------
+        findViewById(R.id.btn_decoy_pin).setOnClickListener(v -> {
+            if (!VaultPinActivity.isPinSet(this)) {
+                Toast.makeText(this, getString(R.string.vault_decoy_need_pin),
+                        Toast.LENGTH_LONG).show();
+                return;
+            }
+            Intent i = new Intent(this, VaultPinActivity.class);
+            i.putExtra(VaultPinActivity.EXTRA_MODE_SET_DECOY, true);
+            startActivity(i);
+        });
+
         // ---------- Backup lokal ----------
         findViewById(R.id.btn_export_local).setOnClickListener(v -> {
             Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);

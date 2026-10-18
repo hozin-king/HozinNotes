@@ -12,7 +12,7 @@ import java.util.List;
 public interface NoteDao {
     String PROJECTION = "id,title,substr(content,1,180) AS content,"
             + "folderId,color,pinned,archived,trashed,isChecklist,imageCount,createdAt,updatedAt,"
-            + "reminderTime,reminderRepeat,locked,contentHtml";
+            + "reminderTime,reminderRepeat,locked,contentHtml,manualOrder";
 
     @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
             + "ORDER BY pinned DESC, updatedAt DESC")
@@ -39,6 +39,35 @@ public interface NoteDao {
             + "ORDER BY pinned DESC, color ASC, updatedAt DESC")
     PagingSource<Integer, NoteEntity> pagingActiveColor();
 
+    /**
+     * v1.17: urutan MANUAL (konsep "drag notes to reorder" ala another-notes-app
+     * maltaisn/another-notes-app, Apache-2.0 — ide dipinjam, implementasi sendiri).
+     * Nilai manualOrder lebih kecil tampil lebih atas; id sebagai tie-break stabil.
+     */
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
+            + "ORDER BY pinned DESC, manualOrder ASC, id DESC")
+    PagingSource<Integer, NoteEntity> pagingActiveManual();
+
+    /** Tetangga tepat di atas dalam urutan manual (grup pinned yang sama). */
+    @Query("SELECT id, manualOrder FROM notes WHERE trashed=0 AND archived=0 "
+            + "AND pinned=:pinned AND manualOrder < :order "
+            + "ORDER BY manualOrder DESC, id DESC LIMIT 1")
+    ManualNeighbor manualAbove(boolean pinned, double order);
+
+    /** Tetangga tepat di bawah dalam urutan manual (grup pinned yang sama). */
+    @Query("SELECT id, manualOrder FROM notes WHERE trashed=0 AND archived=0 "
+            + "AND pinned=:pinned AND manualOrder > :order "
+            + "ORDER BY manualOrder ASC, id DESC LIMIT 1")
+    ManualNeighbor manualBelow(boolean pinned, double order);
+
+    /** Nilai manualOrder terkecil di grup pinned — untuk "pindah ke paling atas". */
+    @Query("SELECT MIN(manualOrder) FROM notes WHERE trashed=0 AND archived=0 "
+            + "AND pinned=:pinned")
+    Double minManualOrder(boolean pinned);
+
+    @Query("UPDATE notes SET manualOrder=:order WHERE id=:id")
+    void setManualOrder(long id, double order);
+
     @Query("SELECT " + PROJECTION + " FROM notes WHERE archived=1 AND trashed=0 "
             + "ORDER BY pinned DESC, updatedAt DESC")
     PagingSource<Integer, NoteEntity> pagingArchived();
@@ -52,7 +81,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.updatedAt DESC")
@@ -60,7 +89,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.updatedAt ASC")
@@ -69,7 +98,7 @@ public interface NoteDao {
     /** v1.16: filter tag + urut tanggal dibuat. */
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.createdAt DESC")
@@ -77,7 +106,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.createdAt ASC")
@@ -85,7 +114,7 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.title COLLATE NOCASE ASC")
@@ -93,15 +122,24 @@ public interface NoteDao {
 
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
             + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
             + "ORDER BY n.pinned DESC, n.color ASC, n.updatedAt DESC")
     PagingSource<Integer, NoteEntity> pagingByTagColor(long tagId);
 
+    /** v1.17: filter tag + urutan manual. */
     @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
             + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
-            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml "
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
+            + "FROM notes n INNER JOIN note_tags nt ON nt.noteId=n.id "
+            + "WHERE nt.tagId=:tagId AND n.trashed=0 AND n.archived=0 "
+            + "ORDER BY n.pinned DESC, n.manualOrder ASC, n.id DESC")
+    PagingSource<Integer, NoteEntity> pagingByTagManual(long tagId);
+
+    @Query("SELECT n.id,n.title,substr(n.content,1,180) AS content,"
+            + "n.folderId,n.color,n.pinned,n.archived,n.trashed,"
+            + "n.isChecklist,n.imageCount,n.createdAt,n.updatedAt,n.reminderTime,n.reminderRepeat,n.locked,n.contentHtml,n.manualOrder "
             + "FROM notes n JOIN notes_fts f ON n.id=f.rowid "
             + "WHERE notes_fts MATCH :q AND n.trashed=0 "
             + "ORDER BY n.updatedAt DESC")
