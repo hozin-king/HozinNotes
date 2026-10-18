@@ -159,7 +159,7 @@ public class NoteImporter {
             while (ev != XmlPullParser.END_DOCUMENT && r.imported + r.skipped < MAX_NOTES) {
                 if (ev == XmlPullParser.START_TAG && "note".equals(p.getName())) {
                     try {
-                        importEvernoteNote(p, noteDao, tagDao, enDate);
+                        importEvernoteNote(ctx.getApplicationContext(), p, noteDao, tagDao, enDate);
                         r.imported++;
                     } catch (Exception e) {
                         r.skipped++;
@@ -171,7 +171,7 @@ public class NoteImporter {
     }
 
     /** Parser diposisikan di START_TAG "note"; selesai tepat setelah END_TAG-nya. */
-    private static void importEvernoteNote(XmlPullParser p, NoteDao noteDao, TagDao tagDao,
+    private static void importEvernoteNote(Context ctx, XmlPullParser p, NoteDao noteDao, TagDao tagDao,
                                            SimpleDateFormat enDate) throws Exception {
         String title = "", contentXml = "", created = null, updated = null;
         List<String> tags = new ArrayList<>();
