@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.OpenableColumns;
+import android.util.Base64;
 import android.util.Xml;
 
 import com.hozinking.notes.data.db.AppDatabase;
@@ -13,6 +14,7 @@ import com.hozinking.notes.data.db.NoteEntity;
 import com.hozinking.notes.data.db.NoteTagCrossRef;
 import com.hozinking.notes.data.db.TagDao;
 import com.hozinking.notes.data.db.TagEntity;
+import com.hozinking.notes.data.repo.NoteRepository;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -20,13 +22,16 @@ import org.xmlpull.v1.XmlPullParser;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -35,7 +40,9 @@ import java.util.zip.ZipInputStream;
  * impor multi-sumber ala Joplin (laurent22/joplin, AGPL-3.0):
  * <ul>
  *   <li>Evernote: file ekspor <b>.enex</b> (ENML → teks polos; daftar tugas
- *       {@code <en-todo>} jadi checklist, lampiran jadi penanda teks).</li>
+ *       {@code <en-todo>} jadi checklist, lampiran gambar ({@code <en-media>}
+ *       + {@code <resource>} base64) diimpor sebagai gambar terenkripsi asli,
+ *       lampiran non-gambar jadi penanda teks).</li>
  *   <li>Google Keep: satu file <b>.json</b> per catatan, atau <b>.zip</b>
  *       hasil Google Takeout berisi banyak {@code Takeout/Keep/*.json}.</li>
  * </ul>
@@ -58,6 +65,10 @@ public class NoteImporter {
     private static final ExecutorService IO = Executors.newSingleThreadExecutor();
     private static final long MAX_BYTES = 64L * 1024 * 1024; // 64 MB
     private static final int MAX_NOTES = 10000;
+    // v1.18: batas impor gambar .enex (ikuti NoteRepository.MAX_IMAGE_BYTES = 12 MB).
+    private static final long MAX_IMPORT_IMAGE_BYTES = 12L * 1024 * 1024;
+    private static final int MAX_IMPORT_IMAGES = 20;
+    private static final int MAX_RESOURCES = 50;
 
     public static void importFile(Context context, Uri uri, Cb cb) {
         IO.execute(() -> {
@@ -164,6 +175,7 @@ public class NoteImporter {
                                            SimpleDateFormat enDate) throws Exception {
         String title = "", contentXml = "", created = null, updated = null;
         List<String> tags = new ArrayList<>();
+        List<EnResource> resources = new ArrayList<>();
         // readText/readInnerXml/skipTag mengonsumsi satu elemen utuh
         // (START_TAG s.d. END_TAG-nya), jadi depth loop hanya untuk </note>.
         int depth = 1;
@@ -178,6 +190,10 @@ public class NoteImporter {
                 else if ("tag".equals(name)) {
                     String t = readText(p).trim();
                     if (!t.isEmpty()) tags.add(t);
+                } else if ("resource".equals(name)) {
+                    // v1.18: tampung lampiran (data base64 + mime) untuk impor gambar.
+                    if (resources.size() < MAX_RESOURCES) resources.add(readResource(p));
+                    else skipTag(p);
                 } else skipTag(p);
             } else if (ev == XmlPullParser.END_TAG) {
                 depth--;
@@ -185,7 +201,27 @@ public class NoteImporter {
             ev = p.next();
         }
         EnmlText t = enmlToText(contentXml);
+
+        // v1.18: cocokkan <en-media> gambar dengan <resource> (verifikasi MD5 ala Evernote),
+        // decode base64 -> gambar terenkripsi. Yang gagal tetap jadi penanda teks.
+        List<byte[]> enexImages = new ArrayList<>();
+        int failedImages = 0;
+        for (EnMediaRef ref : t.mediaRefs) {
+            byte[] img = null;
+            if (enexImages.size() < MAX_IMPORT_IMAGES) {
+                img = findEnexImage(resources, ref.hash);
+            }
+            if (img != null) enexImages.add(img);
+            else failedImages++;
+        }
         String body = t.text.trim();
+        if (failedImages > 0) {
+            StringBuilder fb = new StringBuilder(body);
+            for (int i = 0; i < failedImages; i++) {
+                fb.append("\n\uD83D\uDDBC [lampiran]");
+            }
+            body = fb.toString();
+        }
         if (title.trim().isEmpty() && body.isEmpty()) throw new Exception("catatan kosong");
 
         NoteEntity n = new NoteEntity();
@@ -198,6 +234,20 @@ public class NoteImporter {
         n.manualOrder = -(double) n.createdAt; // v1.17: posisi awal mode Manual
         long id = noteDao.insert(n);
         insertTags(tagDao, id, tags);
+
+        // v1.18: simpan gambar .enex sebagai lampiran terenkripsi catatan.
+        if (!enexImages.isEmpty()) {
+            NoteRepository repo = NoteRepository.get(ctx);
+            CountDownLatch latch = new CountDownLatch(enexImages.size());
+            for (byte[] img : enexImages) {
+                repo.addImageFromBytes(id, img, ref -> latch.countDown());
+            }
+            try {
+                latch.await(120, TimeUnit.SECONDS);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     private static long parseEnDate(SimpleDateFormat f, String s) {
@@ -292,9 +342,90 @@ public class NoteImporter {
     private static class EnmlText {
         String text = "";
         boolean hasTodo;
+        /** Referensi gambar <en-media hash type> yang akan dicocokkan ke <resource>. */
+        List<EnMediaRef> mediaRefs = new ArrayList<>();
     }
 
-    /** ENML → teks polos. <en-todo> jadi "- [ ] "/ "- [x] ", <en-media> jadi penanda. */
+    /** Atribut <en-media> bertipe gambar. */
+    private static class EnMediaRef {
+        final String hash;
+        final String type;
+        EnMediaRef(String hash, String type) {
+            this.hash = hash;
+            this.type = type;
+        }
+    }
+
+    /** Satu <resource> .enex: lampiran mentah (base64) + mime. */
+    private static class EnResource {
+        String mime;
+        String data;
+    }
+
+    /**
+     * Baca satu elemen <resource> (parser di START_TAG); kembalikan mime + data base64.
+     * Selesai tepat setelah END_TAG-nya.
+     */
+    private static EnResource readResource(XmlPullParser p) throws Exception {
+        EnResource r = new EnResource();
+        StringBuilder data = new StringBuilder();
+        int depth = 1;
+        int ev = p.next();
+        while (!(ev == XmlPullParser.END_TAG && depth == 1)) {
+            if (ev == XmlPullParser.START_TAG) {
+                String name = p.getName();
+                if ("data".equals(name)) {
+                    data.append(readText(p));
+                } else if ("mime".equals(name)) {
+                    r.mime = readText(p).trim();
+                } else {
+                    skipTag(p);
+                }
+            }
+            ev = p.next();
+        }
+        r.data = data.toString().replaceAll("\\s+", "");
+        return r;
+    }
+
+    /**
+     * Cari resource yang cocok dengan hash MD5 Evernote, decode base64,
+     * dan kembalikan bytes gambar bila valid (null bila tidak cocok/gagal).
+     */
+    private static byte[] findEnexImage(List<EnResource> resources, String hash) {
+        if (hash == null || hash.isEmpty()) return null;
+        for (EnResource r : resources) {
+            if (r.data == null || r.data.isEmpty()) continue;
+            if (r.data.length() > MAX_IMPORT_IMAGE_BYTES * 4 / 3 + 4096) continue;
+            byte[] raw;
+            try {
+                raw = Base64.decode(r.data, Base64.DEFAULT);
+            } catch (Exception e) {
+                continue;
+            }
+            if (raw.length == 0 || raw.length > MAX_IMPORT_IMAGE_BYTES) continue;
+            if (md5Hex(raw).equalsIgnoreCase(hash)) return raw;
+        }
+        return null;
+    }
+
+    private static String md5Hex(byte[] b) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] d = md.digest(b);
+            StringBuilder sb = new StringBuilder(32);
+            for (byte x : d) {
+                sb.append(Character.forDigit((x >> 4) & 0xF, 16));
+                sb.append(Character.forDigit(x & 0xF, 16));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** ENML → teks polos. <en-todo> jadi "- [ ] "/ "- [x] ",
+     *  <en-media> gambar dicatat untuk diimpor, lainnya jadi penanda. */
     private static EnmlText enmlToText(String enml) {
         EnmlText out = new EnmlText();
         if (enml == null || enml.isEmpty()) return out;
@@ -337,11 +468,22 @@ public class NoteImporter {
                             sb.append("true".equalsIgnoreCase(checked) ? "- [x] " : "- [ ] ");
                             break;
                         }
-                        case "en-media":
-                            newline(sb);
-                            sb.append("\uD83D\uDDBC [lampiran]");
-                            newline(sb);
+                        case "en-media": {
+                            // v1.18: gambar dicocokkan ke <resource> lalu diimpor
+                            // sebagai lampiran terenkripsi; non-gambar tetap penanda.
+                            String type = p.getAttributeValue(null, "type");
+                            String hash = p.getAttributeValue(null, "hash");
+                            if (type != null && type.toLowerCase(Locale.US).startsWith("image/")
+                                    && hash != null && !hash.isEmpty()
+                                    && out.mediaRefs.size() < MAX_IMPORT_IMAGES) {
+                                out.mediaRefs.add(new EnMediaRef(hash, type));
+                            } else {
+                                newline(sb);
+                                sb.append("\uD83D\uDDBC [lampiran]");
+                                newline(sb);
+                            }
                             break;
+                        }
                         case "a":
                             linkHref = p.getAttributeValue(null, "href");
                             linkText = new StringBuilder();

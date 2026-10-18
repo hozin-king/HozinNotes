@@ -9,6 +9,12 @@
     <string name="vault_title_required">Judul tidak boleh kosong</string>
     <string name="vault_view">Lihat isi</string>
     <string name="vault_delete_confirm">Hapus catatan ini secara permanen?</string>
+    <!-- v1.18: PIN kamuflase -->
+    <string name="vault_decoy_set_title">Buat PIN kamuflase 6 digit</string>
+    <string name="vault_decoy_confirm_title">Konfirmasi PIN kamuflase</string>
+    <string name="vault_decoy_saved">PIN kamuflase tersimpan</string>
+    <string name="vault_decoy_same_pin">PIN kamuflase tidak boleh sama dengan PIN asli</string>
+    <string name="vault_decoy_need_pin">Buat PIN Ruang Privat dulu sebelum mengatur PIN kamuflase</string>
 
     <!-- Settings -->
     <string name="settings_display">Tampilan</string>
@@ -18,6 +24,8 @@
     <string name="theme_system">Ikuti sistem</string>
     <string name="settings_lock">Kunci aplikasi</string>
     <string name="settings_lock_desc">Minta PIN / sidik jari setiap aplikasi dibuka</string>
+    <string name="settings_decoy_pin">Atur PIN kamuflase</string>
+    <string name="settings_decoy_desc">PIN kedua 6 digit yang membuka Ruang Privat kosong — berguna bila Anda terpaksa membuka vault di depan orang lain.</string>
     <string name="lock_pin_cancelled">Pembuatan PIN dibatalkan — kunci aplikasi tidak aktif</string>
     <string name="settings_backup_local">Backup lokal</string>
     <string name="backup_export">Ekspor ke file ZIP</string>

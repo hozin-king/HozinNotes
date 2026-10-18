@@ -71,12 +71,17 @@ public class NoteListFragment extends Fragment {
     private static final int RC_NOTIF_PIN = 3001;
     private long pendingPinId = -1;
 
-    /** PIN vault -> bila OK, buka Ruang Privat. Bila PIN belum ada, arahkan ke mode buat PIN. */
+    /** PIN vault -> bila OK, buka Ruang Privat. Teruskan flag PIN kamuflase bila ada. */
     private final ActivityResultLauncher<Intent> vaultLauncher =
             registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
                     result -> {
                         if (result.getResultCode() == Activity.RESULT_OK) {
-                            startActivity(new Intent(requireContext(), VaultActivity.class));
+                            Intent open = new Intent(requireContext(), VaultActivity.class);
+                            if (result.getData() != null && result.getData().getBooleanExtra(
+                                    VaultPinActivity.EXTRA_DECOY_USED, false)) {
+                                open.putExtra(VaultActivity.EXTRA_DECOY, true);
+                            }
+                            startActivity(open);
                         }
                     });
 

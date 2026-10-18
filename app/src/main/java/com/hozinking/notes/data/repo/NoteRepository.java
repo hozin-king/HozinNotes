@@ -508,6 +508,21 @@ public class NoteRepository {
     }
 
     /**
+     * Simpan bytes gambar mentah sebagai lampiran terenkripsi catatan
+     * (dipakai impor .enex; bytes sudah tervalidasi pengirim).
+     * Berjalan di thread executor internal; callback di thread yang sama.
+     */
+    public void addImageFromBytes(long noteId, byte[] plain, Cb<ImageRefEntity> cb) {
+        io.execute(() -> {
+            if (plain == null || plain.length == 0 || plain.length > MAX_IMAGE_BYTES) {
+                cb.onResult(null);
+                return;
+            }
+            saveImageBytes(noteId, plain, null, cb);
+        });
+    }
+
+    /**
      * Simpan foto live: video ~3 detik dienkripsi ke filesDir/videos/*_live.bin,
      * 1 frame tengah jadi foto still (disimpan via {@link #saveImageBytes}).
      * Suffix "_live" membedakan file video dari foto biasa di file system.

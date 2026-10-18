@@ -33,18 +33,29 @@ import java.security.SecureRandom;
  *
  * <p>Extra: "mode_set" (boolean) — true = buat PIN baru (2 langkah:
  * buat lalu konfirmasi), false = verifikasi PIN yang sudah ada.
+ * Extra "mode_set_decoy" (boolean) — true = buat PIN KAMUFLASE (kedua)
+ * untuk plausible deniability: bila PIN kamuflase dimasukkan saat verifikasi,
+ * hasil RESULT_OK disertai extra "decoy_used"=true agar pemanggil membuka
+ * vault yang tampak kosong.
  * PIN disimpan sebagai SHA-256(salt + pin) di EncryptedSharedPreferences.
  */
 public class VaultPinActivity extends AppCompatActivity {
 
     public static final String EXTRA_MODE_SET = "mode_set";
+    /** True = atur PIN kamuflase (bukan PIN utama). */
+    public static final String EXTRA_MODE_SET_DECOY = "mode_set_decoy";
+    /** True pada result intent bila yang dimasukkan adalah PIN kamuflase. */
+    public static final String EXTRA_DECOY_USED = "decoy_used";
     public static final int RC_PIN = 101;
 
     private static final String PREFS = "vault_prefs";
     private static final String KEY_SALT = "pin_salt";
     private static final String KEY_HASH = "pin_hash";
+    private static final String KEY_DECOY_SALT = "pin_decoy_salt";
+    private static final String KEY_DECOY_HASH = "pin_decoy_hash";
 
     private boolean modeSet;
+    private boolean modeSetDecoy;
     private boolean confirmStep;
     private String firstPin;
 
@@ -56,6 +67,8 @@ public class VaultPinActivity extends AppCompatActivity {
         setContentView(R.layout.activity_vault_pin);
 
         modeSet = getIntent().getBooleanExtra(EXTRA_MODE_SET, false);
+        modeSetDecoy = getIntent().getBooleanExtra(EXTRA_MODE_SET_DECOY, false);
+        boolean setMode = modeSet || modeSetDecoy;
 
         TextView tvTitle = findViewById(R.id.pin_title);
         EditText etPin = findViewById(R.id.pin_input);
@@ -76,8 +89,9 @@ public class VaultPinActivity extends AppCompatActivity {
         });
         btnOk.setOnClickListener(v -> onPinEntered(tvTitle, etPin));
 
-        // Tombol sidik jari hanya bila perangkat mendukung & PIN sudah ada.
-        if (!modeSet && canUseBiometric()) {
+        // Tombol sidik jari hanya bila perangkat mendukung & PIN sudah ada
+        // (tidak untuk mode buat PIN / PIN kamuflase).
+        if (!setMode && canUseBiometric()) {
             btnBio.setVisibility(View.VISIBLE);
             btnBio.setOnClickListener(v -> authenticateBiometric());
         } else {
@@ -86,7 +100,11 @@ public class VaultPinActivity extends AppCompatActivity {
     }
 
     private void updateTitle(TextView tvTitle) {
-        if (modeSet) {
+        if (modeSetDecoy) {
+            tvTitle.setText(confirmStep
+                    ? getString(R.string.vault_decoy_confirm_title)
+                    : getString(R.string.vault_decoy_set_title));
+        } else if (modeSet) {
             tvTitle.setText(confirmStep
                     ? getString(R.string.vault_confirm_pin)
                     : getString(R.string.vault_set_pin));
@@ -103,14 +121,29 @@ public class VaultPinActivity extends AppCompatActivity {
         }
         etPin.setText("");
 
-        if (modeSet) {
+        if (modeSet || modeSetDecoy) {
             if (!confirmStep) {
                 firstPin = pin;
                 confirmStep = true;
                 updateTitle(tvTitle);
             } else {
                 if (firstPin.equals(pin)) {
-                    savePin(this, pin);
+                    if (modeSetDecoy) {
+                        // PIN kamuflase tidak boleh sama dengan PIN asli.
+                        if (verifyPin(this, pin)) {
+                            firstPin = null;
+                            confirmStep = false;
+                            updateTitle(tvTitle);
+                            Toast.makeText(this, getString(R.string.vault_decoy_same_pin),
+                                    Toast.LENGTH_LONG).show();
+                            return;
+                        }
+                        savePin(this, pin, KEY_DECOY_SALT, KEY_DECOY_HASH);
+                        Toast.makeText(this, getString(R.string.vault_decoy_saved),
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        savePin(this, pin, KEY_SALT, KEY_HASH);
+                    }
                     setResult(RESULT_OK);
                     finish();
                 } else {
@@ -123,6 +156,12 @@ public class VaultPinActivity extends AppCompatActivity {
         } else {
             if (verifyPin(this, pin)) {
                 setResult(RESULT_OK);
+                finish();
+            } else if (isDecoyPinSet(this) && verifyDecoyPin(this, pin)) {
+                // PIN kamuflase: buka vault yang tampak kosong (plausible deniability).
+                Intent data = new Intent();
+                data.putExtra(EXTRA_DECOY_USED, true);
+                setResult(RESULT_OK, data);
                 finish();
             } else {
                 Toast.makeText(this, getString(R.string.vault_wrong_pin), Toast.LENGTH_SHORT).show();
@@ -198,12 +237,53 @@ public class VaultPinActivity extends AppCompatActivity {
 
     public static void clearPin(Context ctx) {
         try {
-            encryptedPrefs(ctx).edit().remove(KEY_HASH).remove(KEY_SALT).apply();
+            encryptedPrefs(ctx).edit()
+                    .remove(KEY_HASH).remove(KEY_SALT)
+                    .remove(KEY_DECOY_HASH).remove(KEY_DECOY_SALT)
+                    .apply();
         } catch (Exception ignored) {
         }
     }
 
+    /** PIN kamuflase sudah diatur? */
+    public static boolean isDecoyPinSet(Context ctx) {
+        try {
+            return encryptedPrefs(ctx).contains(KEY_DECOY_HASH);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /** Hapus PIN kamuflase saja (PIN utama tetap). */
+    public static void clearDecoyPin(Context ctx) {
+        try {
+            encryptedPrefs(ctx).edit()
+                    .remove(KEY_DECOY_HASH).remove(KEY_DECOY_SALT)
+                    .apply();
+        } catch (Exception ignored) {
+        }
+    }
+
+    private static boolean verifyDecoyPin(Context ctx, String pin) {
+        try {
+            android.content.SharedPreferences prefs = encryptedPrefs(ctx);
+            String saltHex = prefs.getString(KEY_DECOY_SALT, null);
+            String stored = prefs.getString(KEY_DECOY_HASH, null);
+            if (saltHex == null || stored == null) {
+                return false;
+            }
+            String hash = HashUtils.sha256Hex((saltHex + pin).getBytes(StandardCharsets.UTF_8));
+            return stored.equalsIgnoreCase(hash);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private static void savePin(Context ctx, String pin) {
+        savePin(ctx, pin, KEY_SALT, KEY_HASH);
+    }
+
+    private static void savePin(Context ctx, String pin, String saltKey, String hashKey) {
         byte[] salt = new byte[16];
         new SecureRandom().nextBytes(salt);
         StringBuilder sb = new StringBuilder(salt.length * 2);
@@ -214,8 +294,8 @@ public class VaultPinActivity extends AppCompatActivity {
         String saltHex = sb.toString();
         String hash = HashUtils.sha256Hex((saltHex + pin).getBytes(StandardCharsets.UTF_8));
         encryptedPrefs(ctx).edit()
-                .putString(KEY_SALT, saltHex)
-                .putString(KEY_HASH, hash)
+                .putString(saltKey, saltHex)
+                .putString(hashKey, hash)
                 .apply();
     }
 
