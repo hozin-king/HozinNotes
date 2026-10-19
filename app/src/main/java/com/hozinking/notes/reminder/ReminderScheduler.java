@@ -26,6 +26,8 @@ public class ReminderScheduler {
     public static final int REPEAT_WEEKLY = 2;
     /** v1.14: tiap bulan (tanggal yang sama; akhir bulan menyesuaikan kalender). */
     public static final int REPEAT_MONTHLY = 3;
+    /** v1.19: tiap tahun (tanggal & bulan yang sama; 29 Feb menyesuaikan kalender). */
+    public static final int REPEAT_YEARLY = 4;
 
     /** Tunda (snooze) default: 10 menit. */
     public static final long SNOOZE_DELAY_MS = 10L * 60 * 1000;
@@ -88,6 +90,9 @@ public class ReminderScheduler {
         if (repeat == REPEAT_MONTHLY) {
             return nextMonthly(from);
         }
+        if (repeat == REPEAT_YEARLY) {
+            return nextYearly(from);
+        }
         long step;
         if (repeat == REPEAT_DAILY) {
             step = 24L * 3600 * 1000;
@@ -118,6 +123,24 @@ public class ReminderScheduler {
         int guard = 0;
         while (next <= now && guard++ < 120) { // maks 10 tahun ke depan
             c.add(java.util.Calendar.MONTH, 1);
+            next = c.getTimeInMillis();
+        }
+        return next > now ? next : 0;
+    }
+
+    /**
+     * Kemunculan berikutnya untuk pola tahunan: tambah 1 tahun per langkah
+     * via Calendar (29 Februari pada tahun non-kabisat menjadi 28 Februari),
+     * kejar ketertinggalan sampai di masa depan.
+     */
+    private static long nextYearly(long from) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.setTimeInMillis(from);
+        long now = System.currentTimeMillis();
+        long next = from;
+        int guard = 0;
+        while (next <= now && guard++ < 120) { // maks 120 tahun ke depan
+            c.add(java.util.Calendar.YEAR, 1);
             next = c.getTimeInMillis();
         }
         return next > now ? next : 0;

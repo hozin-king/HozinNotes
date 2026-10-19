@@ -98,6 +98,7 @@
     <string name="reminder_repeat_daily">Setiap hari</string>
     <string name="reminder_repeat_weekly">Setiap minggu</string>
     <string name="reminder_repeat_monthly">Setiap bulan</string>
+    <string name="reminder_repeat_yearly">Setiap tahun</string>
     <string name="reminder_snooze">Tunda 10 mnt</string>
     <string name="reminder_snoozed">Pengingat ditunda 10 menit.</string>
 

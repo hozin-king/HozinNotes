@@ -41,7 +41,8 @@ public class ReminderReceiver extends BroadcastReceiver {
                     long now = System.currentTimeMillis();
                     if (n.reminderRepeat == ReminderScheduler.REPEAT_DAILY
                             || n.reminderRepeat == ReminderScheduler.REPEAT_WEEKLY
-                            || n.reminderRepeat == ReminderScheduler.REPEAT_MONTHLY) {
+                            || n.reminderRepeat == ReminderScheduler.REPEAT_MONTHLY
+                            || n.reminderRepeat == ReminderScheduler.REPEAT_YEARLY) {
                         // Berulang: jadwalkan kemunculan berikutnya.
                         long next = ReminderScheduler.nextRepeatTime(n.reminderTime,
                                 n.reminderRepeat);

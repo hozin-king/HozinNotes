@@ -9,6 +9,8 @@
     <string name="delete">Hapus</string>
     <string name="edit">Ubah</string>
     <string name="share">Bagikan</string>
+    <string name="share_as_image">Bagikan sebagai gambar</string>
+    <string name="share_as_image_error">Gagal membuat gambar catatan.</string>
     <string name="close">Tutup</string>
     <string name="retry">Coba lagi</string>
     <string name="yes">Ya</string>

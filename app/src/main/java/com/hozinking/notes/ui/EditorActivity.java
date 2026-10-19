@@ -1632,6 +1632,7 @@ public class EditorActivity extends AppCompatActivity {
                                 ? R.string.editor_stop_reading : R.string.editor_read_aloud),
                         this::toggleReadAloud)
                 .addItem(getString(R.string.share), this::shareNote)
+                .addItem(getString(R.string.share_as_image), this::shareAsImage)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
                 .addItem(getString(R.string.export_md), this::exportMarkdown)
                 .addItem(getString(R.string.export_html), this::exportHtml)
@@ -1912,6 +1913,24 @@ public class EditorActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * v1.19: bagikan catatan sebagai gambar kartu (PNG).
+     * Konsep "share note as an image" ala Shkiper; render via ImageShareExporter.
+     */
+    private void shareAsImage() {
+        if (note == null) return;
+        saveNow(); // sinkronkan field dulu
+        String title = displayTitle();
+        String body = note.content == null ? "" : note.content;
+        if (note.contentHtml) {
+            body = Html.fromHtml(body, Html.FROM_HTML_MODE_LEGACY).toString();
+        }
+        // Sederhanakan marker checklist markdown agar rapi di gambar.
+        body = body.replaceAll("(?m)^\\s*- \\[ \\] ", "☐ ")
+                .replaceAll("(?m)^\\s*- \\[[xX]\\] ", "☑ ");
+        ImageShareExporter.exportAndShare(this, title, body.trim(), note.color);
+    }
+
     /** Ekspor catatan ini menjadi PDF lalu bagikan. */
     private void exportPdf() {
         if (note == null) return;
@@ -2049,6 +2068,9 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.reminder_repeat_monthly),
                         () -> applyReminder(when,
                                 com.hozinking.notes.reminder.ReminderScheduler.REPEAT_MONTHLY))
+                .addItem(getString(R.string.reminder_repeat_yearly),
+                        () -> applyReminder(when,
+                                com.hozinking.notes.reminder.ReminderScheduler.REPEAT_YEARLY))
                 .show();
     }
 
@@ -2071,6 +2093,9 @@ public class EditorActivity extends AppCompatActivity {
         }
         if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_MONTHLY) {
             return getString(R.string.reminder_repeat_monthly);
+        }
+        if (repeat == com.hozinking.notes.reminder.ReminderScheduler.REPEAT_YEARLY) {
+            return getString(R.string.reminder_repeat_yearly);
         }
         return getString(R.string.reminder_repeat_once);
     }
