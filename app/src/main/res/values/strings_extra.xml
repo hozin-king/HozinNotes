@@ -180,4 +180,8 @@
     <string name="img_detail_taken">Waktu ambil</string>
     <string name="img_detail_file">Info berkas</string>
     <string name="img_detail_path">Jalur lokal</string>
+
+    <!-- v1.20: biometrik untuk catatan terkunci -->
+    <string name="lock_biometric_sub">Verifikasi sidik jari / wajah untuk membuka</string>
+    <string name="lock_use_pin">Pakai PIN</string>
 </resources>

@@ -98,7 +98,7 @@ public class NoteListFragment extends Fragment {
         adapter = new NoteAdapter(requireContext(), new NoteAdapter.Listener() {
             @Override
             public void onClick(NoteEntity note) {
-                NoteLockGate.openMaybeLocked(requireContext(), note,
+                NoteLockGate.openMaybeLocked(requireActivity(), note,
                         id -> openEditor(id));
             }
 
@@ -140,6 +140,9 @@ public class NoteListFragment extends Fragment {
                                 startActivity(new Intent(requireContext(), ArchiveActivity.class)))
                         .addItem(getString(R.string.trash_title), () ->
                                 startActivity(new Intent(requireContext(), TrashActivity.class)))
+                        .addItem(getString(R.string.mood_today), this::showMoodPicker)
+                        .addItem(getString(R.string.mood_stats), () ->
+                                startActivity(new Intent(requireContext(), MoodStatsActivity.class)))
                         .addItem(getString(R.string.tag_filter), this::showTagFilterSheet)
                         .addItem(getString(R.string.notes_sort_title), this::showSortSheet)
                         .show());
@@ -374,6 +377,29 @@ public class NoteListFragment extends Fragment {
         if (viewToggle == null) return;
         viewToggle.setImageResource(isGridMode()
                 ? R.drawable.ic_view_list : R.drawable.ic_view_grid);
+    }
+
+    /** v1.21: pilih mood hari ini (sheet 5 pilihan, tandai yang sudah tersimpan). */
+    private void showMoodPicker() {
+        final String today = MoodHelper.today();
+        NoteRepository.get(requireContext()).moodForDate(today, cur ->
+                main.post(() -> {
+                    IosActionSheet s = new IosActionSheet(requireContext())
+                            .setTitle(getString(R.string.mood_pick_title));
+                    for (int m = MoodHelper.MIN; m <= MoodHelper.MAX; m++) {
+                        final int mood = m;
+                        s.addItem((cur == m ? "✓ " : "") + MoodHelper.emoji(m)
+                                        + " " + MoodHelper.label(m),
+                                () -> saveMood(today, mood));
+                    }
+                    s.show();
+                }));
+    }
+
+    private void saveMood(String date, int mood) {
+        NoteRepository.get(requireContext()).saveMood(date, mood, v ->
+                main.post(() -> Toast.makeText(requireContext(),
+                        R.string.mood_saved, Toast.LENGTH_SHORT).show()));
     }
 
     private void showSortSheet() {

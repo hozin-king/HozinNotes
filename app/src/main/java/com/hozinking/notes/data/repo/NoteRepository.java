@@ -16,6 +16,8 @@ import com.hozinking.notes.data.db.FolderEntity;
 import com.hozinking.notes.data.db.ImageDao;
 import com.hozinking.notes.data.db.ImageRefEntity;
 import com.hozinking.notes.data.db.ManualNeighbor;
+import com.hozinking.notes.data.db.MoodDao;
+import com.hozinking.notes.data.db.MoodEntry;
 import com.hozinking.notes.data.db.NoteDao;
 import com.hozinking.notes.data.db.NoteEntity;
 import com.hozinking.notes.data.db.NoteTagCrossRef;
@@ -70,6 +72,7 @@ public class NoteRepository {
     private final AudioDao audioDao;
     private final FolderDao folderDao;
     private final TagDao tagDao;
+    private final MoodDao moodDao;
     private VaultDao vaultDao;
     private final ExecutorService io = Executors.newFixedThreadPool(4);
 
@@ -82,6 +85,7 @@ public class NoteRepository {
         audioDao = db.audioDao();
         folderDao = db.folderDao();
         tagDao = db.tagDao();
+        moodDao = db.moodDao();
         vaultDao = VaultDatabase.get(appCtx).vaultDao();
     }
 
@@ -1064,5 +1068,32 @@ public class NoteRepository {
         int nw = Math.max(1, Math.round(w * scale));
         int nh = Math.max(1, Math.round(h * scale));
         return Bitmap.createScaledBitmap(src, nw, nh, true);
+    }
+
+    // ------------------------------------------------------------- mood harian
+
+    /** v1.21: simpan/timpa mood satu hari (nilai 1..5). */
+    public void saveMood(String date, int mood, Cb<Void> cb) {
+        io.execute(() -> {
+            MoodEntry e = new MoodEntry();
+            e.date = date;
+            e.mood = Math.max(1, Math.min(5, mood));
+            e.updatedAt = System.currentTimeMillis();
+            moodDao.upsert(e);
+            cb.onResult(null);
+        });
+    }
+
+    /** v1.21: nilai mood pada tanggal tertentu; 0 bila belum dicatat. */
+    public void moodForDate(String date, Cb<Integer> cb) {
+        io.execute(() -> {
+            MoodEntry e = moodDao.forDate(date);
+            cb.onResult(e == null ? 0 : e.mood);
+        });
+    }
+
+    /** v1.21: entri mood dalam rentang tanggal (inklusif), urut menaik. */
+    public void moodRange(String from, String to, Cb<List<MoodEntry>> cb) {
+        io.execute(() -> cb.onResult(moodDao.range(from, to)));
     }
 }

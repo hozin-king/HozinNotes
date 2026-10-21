@@ -16,8 +16,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
         FolderEntity.class,
         TagEntity.class,
         NoteTagCrossRef.class,
-        NoteFts.class
-}, version = 7, exportSchema = false)
+        NoteFts.class,
+        MoodEntry.class
+}, version = 8, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -94,6 +95,23 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract TagDao tagDao();
 
+    /**
+     * v7 -> v8: tabel mood harian (mood_entries) untuk fitur Mood Harian (v1.21).
+     * Tabel BARU — data lama tidak tersentuh, migrasi aman.
+     */
+    static final Migration MIGRATION_7_8 = new Migration(7, 8) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `mood_entries` ("
+                    + "`date` TEXT NOT NULL, "
+                    + "`mood` INTEGER NOT NULL, "
+                    + "`updatedAt` INTEGER NOT NULL, "
+                    + "PRIMARY KEY(`date`))");
+        }
+    };
+
+    public abstract MoodDao moodDao();
+
     public static AppDatabase get(Context ctx) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
@@ -102,7 +120,8 @@ public abstract class AppDatabase extends RoomDatabase {
                     instance = Room.databaseBuilder(app, AppDatabase.class, "hozin_notes.db")
                             .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
-                                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                                    MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                                    MIGRATION_7_8)
                             .build();
                 }
             }

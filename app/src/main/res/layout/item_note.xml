@@ -84,6 +84,15 @@
                         android:textColor="?attr/colorOnSurfaceVariant"
                         android:textSize="12sp" />
 
+                    <TextView
+                        android:id="@+id/checklist_progress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+
                     <ImageView
                         android:id="@+id/pin_badge"
                         android:layout_width="18dp"

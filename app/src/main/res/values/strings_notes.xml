@@ -218,4 +218,19 @@
     <!-- Pratinjau -->
     <string name="preview_title">Pratinjau</string>
     <string name="preview_edit">Tulis</string>
+
+    <!-- v1.20: progres checklist di daftar -->
+    <string name="checklist_progress">✓ %1$d/%2$d selesai</string>
+
+    <!-- v1.21: mood harian + ringkasan -->
+    <string name="mood_today">Mood hari ini</string>
+    <string name="mood_stats">Ringkasan mood</string>
+    <string name="mood_pick_title">Bagaimana perasaanmu hari ini?</string>
+    <string name="mood_saved">Mood hari ini tersimpan</string>
+    <string name="mood_stats_title">Ringkasan mood</string>
+    <string name="mood_avg_caption">Rata-rata 30 hari terakhir</string>
+    <string name="mood_dist_caption">Sebaran 30 hari terakhir</string>
+    <string name="mood_streak_days">🔥 %1$d hari beruntun mencatat mood</string>
+    <string name="mood_streak_none">Belum ada streak — catat mood hari ini yuk!</string>
+    <string name="mood_no_data">Belum ada data mood. Catat mood harianmu lewat menu ⋯ di daftar catatan.</string>
 </resources>

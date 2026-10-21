@@ -91,7 +91,7 @@ public class VaultPinActivity extends AppCompatActivity {
 
         // Tombol sidik jari hanya bila perangkat mendukung & PIN sudah ada
         // (tidak untuk mode buat PIN / PIN kamuflase).
-        if (!setMode && canUseBiometric()) {
+        if (!setMode && canUseBiometric(this)) {
             btnBio.setVisibility(View.VISIBLE);
             btnBio.setOnClickListener(v -> authenticateBiometric());
         } else {
@@ -171,9 +171,10 @@ public class VaultPinActivity extends AppCompatActivity {
 
     // ---------- Biometrik ----------
 
-    private boolean canUseBiometric() {
+    /** v1.20: statis agar bisa dipakai NoteLockGate (biometrik catatan terkunci). */
+    public static boolean canUseBiometric(android.content.Context ctx) {
         try {
-            BiometricManager manager = BiometricManager.from(this);
+            BiometricManager manager = BiometricManager.from(ctx);
             return manager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG)
                     == BiometricManager.BIOMETRIC_SUCCESS;
         } catch (Exception e) {

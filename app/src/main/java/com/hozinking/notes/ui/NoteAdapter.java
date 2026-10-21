@@ -149,6 +149,7 @@ public class NoteAdapter extends PagingDataAdapter<NoteListItem, RecyclerView.Vi
         private final TextView title;
         private final TextView preview;
         private final TextView date;
+        private final TextView checklistProgress;
         private final ImageView thumb;
         private final ImageView pin;
         private final View colorStrip;
@@ -163,6 +164,7 @@ public class NoteAdapter extends PagingDataAdapter<NoteListItem, RecyclerView.Vi
             title = v.findViewById(R.id.title);
             preview = v.findViewById(R.id.preview);
             date = v.findViewById(R.id.date);
+            checklistProgress = v.findViewById(R.id.checklist_progress);
             thumb = v.findViewById(R.id.thumb);
             pin = v.findViewById(R.id.pin_badge);
             colorStrip = v.findViewById(R.id.color_strip);
@@ -217,6 +219,15 @@ public class NoteAdapter extends PagingDataAdapter<NoteListItem, RecyclerView.Vi
                 date.setText("\u23F0 " + rf.format(new Date(n.reminderTime)));
             }
             pin.setVisibility(n.pinned ? View.VISIBLE : View.GONE);
+
+            // v1.20: badge "✓ 3/8 selesai" untuk catatan checklist.
+            String prog = checklistProgress(n);
+            if (prog != null) {
+                checklistProgress.setText(prog);
+                checklistProgress.setVisibility(View.VISIBLE);
+            } else {
+                checklistProgress.setVisibility(View.GONE);
+            }
 
             // Warna note = strip aksen tipis di tepi kiri kartu; body kartu
             // SELALU frosted glass agar teks tetap kontras terbaca.
@@ -294,6 +305,35 @@ public class NoteAdapter extends PagingDataAdapter<NoteListItem, RecyclerView.Vi
             int nl = t.indexOf('\n');
             String line = (nl < 0 ? t : t.substring(0, nl)).trim();
             return line.length() > 60 ? line.substring(0, 60) + "…" : line;
+        }
+
+        /**
+         * v1.20: "✓ 3/8 selesai" untuk catatan checklist di daftar.
+         * Dihitung dari konten daftar HANYA bila tidak terpotong proyeksi
+         * substr(content,1,180) — kalau terpotong, angka bisa menipu, jadi
+         * badge disembunyikan (return null).
+         */
+        private String checklistProgress(NoteEntity n) {
+            if (n == null || !n.isChecklist || n.contentHtml || n.locked) return null;
+            String c = n.content == null ? "" : n.content;
+            if (c.length() >= 180) return null;
+            int total = 0, done = 0;
+            int start = 0;
+            while (true) {
+                int nl = c.indexOf('\n', start);
+                String line = (nl < 0 ? c.substring(start)
+                        : c.substring(start, nl)).trim();
+                if (line.startsWith("- [x]") || line.startsWith("- [X]")) {
+                    total++;
+                    done++;
+                } else if (line.startsWith("- [ ]")) {
+                    total++;
+                }
+                if (nl < 0) break;
+                start = nl + 1;
+            }
+            if (total == 0) return null;
+            return appCtx.getString(R.string.checklist_progress, done, total);
         }
 
         private String stripHtml(String html) {
