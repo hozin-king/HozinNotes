@@ -60,6 +60,7 @@
         <activity android:name=".ui.SettingsActivity" android:exported="false" />
         <activity android:name=".ui.DriveBackupListActivity" android:exported="false" />
         <activity android:name=".ui.MoodStatsActivity" android:exported="false" />
+        <activity android:name=".ui.StatsActivity" android:exported="false" />
         <activity android:name=".ui.mindmap.MindmapActivity" android:exported="false" />
 
         <activity android:name=".chat.LoginActivity" android:exported="false" />

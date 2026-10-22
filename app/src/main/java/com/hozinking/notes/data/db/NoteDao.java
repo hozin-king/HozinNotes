@@ -190,4 +190,48 @@ public interface NoteDao {
 
     @Query("DELETE FROM notes")
     void clearAll();
+
+    // ---------------- v1.22: statistik pemakaian (read-only, tanpa migrasi) ---
+    @Query("SELECT COUNT(*) FROM notes WHERE trashed=0 AND archived=1")
+    int countArchived();
+
+    @Query("SELECT COUNT(*) FROM notes WHERE trashed=1")
+    int countTrashed();
+
+    @Query("SELECT COUNT(*) FROM notes WHERE trashed=0 AND archived=0 AND reminderTime>0")
+    int countWithReminder();
+
+    @Query("SELECT COUNT(*) FROM notes WHERE trashed=0 AND archived=0 AND locked=1")
+    int countLocked();
+
+    @Query("SELECT COUNT(*) FROM notes WHERE trashed=0 AND archived=0 AND isChecklist=1")
+    int countChecklist();
+
+    @Query("SELECT COUNT(*) FROM notes WHERE trashed=0 AND archived=0 AND imageCount>0")
+    int countWithImages();
+
+    @Query("SELECT COALESCE(SUM(LENGTH(IFNULL(title,''))),0)"
+            + "+COALESCE(SUM(LENGTH(IFNULL(content,''))),0)"
+            + " FROM notes WHERE trashed=0 AND archived=0")
+    long sumTextLength();
+
+    @Query("SELECT id, title, LENGTH(IFNULL(title,'')||IFNULL(content,'')) AS len"
+            + " FROM notes WHERE trashed=0 AND archived=0 ORDER BY len DESC LIMIT 1")
+    LongestNote longestNote();
+
+    @Query("SELECT COUNT(*) FROM notes WHERE trashed=0 AND createdAt>=:since")
+    int countCreatedSince(long since);
+
+    /**
+     * Hari paling produktif: "yyyy-MM-dd|jumlah". createdAt dalam milidetik.
+     */
+    @Query("SELECT date(createdAt/1000,'unixepoch','localtime')||'|'||COUNT(*)"
+            + " FROM notes WHERE trashed=0"
+            + " GROUP BY date(createdAt/1000,'unixepoch','localtime')"
+            + " ORDER BY COUNT(*) DESC LIMIT 1")
+    String topDay();
+
+    @Query("SELECT folderId, COUNT(*) AS cnt FROM notes"
+            + " WHERE trashed=0 AND archived=0 GROUP BY folderId ORDER BY cnt DESC")
+    List<FolderCount> countByFolder();
 }

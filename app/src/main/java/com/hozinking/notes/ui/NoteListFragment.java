@@ -143,6 +143,8 @@ public class NoteListFragment extends Fragment {
                         .addItem(getString(R.string.mood_today), this::showMoodPicker)
                         .addItem(getString(R.string.mood_stats), () ->
                                 startActivity(new Intent(requireContext(), MoodStatsActivity.class)))
+                        .addItem(getString(R.string.usage_title), () ->
+                                startActivity(new Intent(requireContext(), StatsActivity.class)))
                         .addItem(getString(R.string.tag_filter), this::showTagFilterSheet)
                         .addItem(getString(R.string.notes_sort_title), this::showSortSheet)
                         .show());

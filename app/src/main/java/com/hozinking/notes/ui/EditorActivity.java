@@ -44,6 +44,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
@@ -146,6 +147,14 @@ public class EditorActivity extends AppCompatActivity {
     private TextView previewLabel;
     private View titleDivider;
     private boolean previewMode = false;
+    // v1.22: kecerahan layar khusus mode pratinjau (konsep brightness kustom
+    // di reading mode ala alialbaali/Noto, Apache-2.0 — implementasi sendiri).
+    private View previewBrightnessRow;
+    private SeekBar previewBrightness;
+    private TextView previewBrightnessPct;
+    private static final String PREFS_UI = "notes_ui_prefs";
+    private static final String KEY_PREVIEW_BRIGHTNESS = "preview_brightness_pct";
+    private static final int BRIGHTNESS_SYSTEM = -1;
     private ActivityResultLauncher<Intent> sketchLauncher;    private EditText findInput;
     private TextView findCount;
     private TextView wordCountView;
@@ -272,6 +281,34 @@ public class EditorActivity extends AppCompatActivity {
         previewLabel = findViewById(R.id.tv_preview);
         titleDivider = findViewById(R.id.title_divider);
         findViewById(R.id.btn_preview).setOnClickListener(v -> togglePreview());
+
+        // v1.22: slider kecerahan — hanya berlaku di jendela editor ini,
+        // tidak mengubah kecerahan sistem. Nilai disimpan per preferensi.
+        previewBrightnessRow = findViewById(R.id.preview_brightness_row);
+        previewBrightness = findViewById(R.id.preview_brightness);
+        previewBrightnessPct = findViewById(R.id.preview_brightness_pct);
+        if (previewBrightness != null) {
+            previewBrightness.setOnSeekBarChangeListener(
+                    new SeekBar.OnSeekBarChangeListener() {
+                        @Override
+                        public void onProgressChanged(SeekBar s, int p, boolean fromUser) {
+                            if (!fromUser) return;
+                            applyPreviewBrightness(p);
+                            getSharedPreferences(PREFS_UI, MODE_PRIVATE)
+                                    .edit().putInt(KEY_PREVIEW_BRIGHTNESS, p).apply();
+                            if (previewBrightnessPct != null) {
+                                previewBrightnessPct.setText(
+                                        getString(R.string.preview_brightness_pct, p));
+                            }
+                        }
+
+                        @Override public void onStartTrackingTouch(SeekBar s) {
+                        }
+
+                        @Override public void onStopTrackingTouch(SeekBar s) {
+                        }
+                    });
+        }
 
         // Bar cari dalam catatan + penghitung kata
         editorScroll = findViewById(R.id.editor_scroll);
@@ -1726,13 +1763,43 @@ public class EditorActivity extends AppCompatActivity {
             previewContent.setVisibility(View.VISIBLE);
             previewLabel.setText(R.string.preview_edit);
             editorScroll.scrollTo(0, 0);
+            // v1.22: tampilkan kontrol kecerahan mode baca.
+            if (previewBrightnessRow != null) {
+                previewBrightnessRow.setVisibility(View.VISIBLE);
+                int saved = getSharedPreferences(PREFS_UI, MODE_PRIVATE)
+                        .getInt(KEY_PREVIEW_BRIGHTNESS, BRIGHTNESS_SYSTEM);
+                if (saved >= 0 && previewBrightness != null) {
+                    previewBrightness.setProgress(saved);
+                    applyPreviewBrightness(saved);
+                    if (previewBrightnessPct != null) {
+                        previewBrightnessPct.setText(
+                                getString(R.string.preview_brightness_pct, saved));
+                    }
+                } else if (previewBrightnessPct != null) {
+                    previewBrightnessPct.setText(
+                            getString(R.string.preview_brightness_system));
+                }
+            }
         } else {
             previewContent.setVisibility(View.GONE);
             titleInput.setVisibility(View.VISIBLE);
             titleDivider.setVisibility(View.VISIBLE);
             contentInput.setVisibility(View.VISIBLE);
             previewLabel.setText(R.string.preview_title);
+            // v1.22: keluar mode baca → kembalikan kecerahan sistem.
+            if (previewBrightnessRow != null) previewBrightnessRow.setVisibility(View.GONE);
+            applyPreviewBrightness(BRIGHTNESS_SYSTEM);
         }
+    }
+
+    /**
+     * v1.22: atur kecerahan hanya untuk jendela activity ini.
+     * Nilai -1 = ikuti kecerahan sistem (tidak diubah).
+     */
+    private void applyPreviewBrightness(int pct) {
+        android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.screenBrightness = pct < 0 ? BRIGHTNESS_SYSTEM : Math.max(1, pct) / 100f;
+        getWindow().setAttributes(lp);
     }
 
     // ---------- cari dalam catatan ----------

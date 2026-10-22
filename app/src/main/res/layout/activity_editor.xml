@@ -55,6 +55,51 @@
                 android:textSize="16sp" />
 
             <!-- Mode pratinjau: tampilkan hasil render, read-only -->
+            <!-- v1.22: kontrol kecerahan khusus mode baca -->
+            <LinearLayout
+                android:id="@+id/preview_brightness_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="☀"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:text="@string/preview_brightness"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp" />
+
+                <SeekBar
+                    android:id="@+id/preview_brightness"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:max="100"
+                    android:progress="70" />
+
+                <TextView
+                    android:id="@+id/preview_brightness_pct"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:minWidth="52dp"
+                    android:gravity="end"
+                    android:text="@string/preview_brightness_system"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
             <TextView
                 android:id="@+id/preview_content"
                 android:layout_width="match_parent"

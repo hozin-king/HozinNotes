@@ -233,4 +233,33 @@
     <string name="mood_streak_days">🔥 %1$d hari beruntun mencatat mood</string>
     <string name="mood_streak_none">Belum ada streak — catat mood hari ini yuk!</string>
     <string name="mood_no_data">Belum ada data mood. Catat mood harianmu lewat menu ⋯ di daftar catatan.</string>
+
+    <!-- v1.22: statistik pemakaian catatan -->
+    <string name="usage_title">Statistik catatan</string>
+    <string name="usage_section_summary">Ringkasan</string>
+    <string name="usage_section_activity">Aktivitas</string>
+    <string name="usage_section_content">Isi catatan</string>
+    <string name="usage_section_types">Jenis catatan</string>
+    <string name="usage_section_folders">Per folder</string>
+    <string name="usage_active">Catatan aktif</string>
+    <string name="usage_archived">Diarsipkan</string>
+    <string name="usage_trashed">Di sampah</string>
+    <string name="usage_week">Dibuat 7 hari terakhir</string>
+    <string name="usage_topday">Hari paling produktif</string>
+    <string name="usage_topday_value">%1$s (%2$d catatan)</string>
+    <string name="usage_chars">Total karakter</string>
+    <string name="usage_avgchars">Rata-rata karakter/catatan</string>
+    <string name="usage_longest">Catatan terpanjang</string>
+    <string name="usage_longest_value">%1$s (%2$s karakter)</string>
+    <string name="usage_reminder">Berpengingat</string>
+    <string name="usage_locked">Terkunci</string>
+    <string name="usage_checklist">Checklist</string>
+    <string name="usage_images">Bergambar</string>
+    <string name="usage_notes_count">%1$s catatan</string>
+    <string name="usage_none">–</string>
+
+    <!-- v1.22: kecerahan layar di mode pratinjau -->
+    <string name="preview_brightness">Kecerahan layar</string>
+    <string name="preview_brightness_pct">%1$d%%</string>
+    <string name="preview_brightness_system">Sistem</string>
 </resources>

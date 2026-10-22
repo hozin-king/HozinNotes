@@ -11,8 +11,10 @@ import androidx.paging.PagingSource;
 import com.hozinking.notes.data.db.AppDatabase;
 import com.hozinking.notes.data.db.AudioDao;
 import com.hozinking.notes.data.db.AudioRefEntity;
+import com.hozinking.notes.data.db.FolderCount;
 import com.hozinking.notes.data.db.FolderDao;
 import com.hozinking.notes.data.db.FolderEntity;
+import com.hozinking.notes.data.db.LongestNote;
 import com.hozinking.notes.data.db.ImageDao;
 import com.hozinking.notes.data.db.ImageRefEntity;
 import com.hozinking.notes.data.db.ManualNeighbor;
@@ -20,6 +22,7 @@ import com.hozinking.notes.data.db.MoodDao;
 import com.hozinking.notes.data.db.MoodEntry;
 import com.hozinking.notes.data.db.NoteDao;
 import com.hozinking.notes.data.db.NoteEntity;
+import com.hozinking.notes.data.db.NoteStats;
 import com.hozinking.notes.data.db.NoteTagCrossRef;
 import com.hozinking.notes.data.db.TagDao;
 import com.hozinking.notes.data.db.TagEntity;
@@ -1095,5 +1098,54 @@ public class NoteRepository {
     /** v1.21: entri mood dalam rentang tanggal (inklusif), urut menaik. */
     public void moodRange(String from, String to, Cb<List<MoodEntry>> cb) {
         io.execute(() -> cb.onResult(moodDao.range(from, to)));
+    }
+
+    /**
+     * v1.22: hitung statistik pemakaian catatan sekaligus (read-only).
+     * Konsep layar analitik catatan dipinjam dari pola aplikasi seperti
+     * Shkiper/LittleGooseOffice — implementasi sendiri.
+     */
+    public void noteStats(Cb<NoteStats> cb) {
+        io.execute(() -> {
+            NoteStats s = new NoteStats();
+            s.active = noteDao.countActive();
+            s.archived = noteDao.countArchived();
+            s.trashed = noteDao.countTrashed();
+            s.createdLast7d = noteDao.countCreatedSince(
+                    System.currentTimeMillis() - 7L * 24 * 3600 * 1000);
+            String top = noteDao.topDay();
+            if (top != null && top.contains("|")) {
+                String[] parts = top.split("\\|", 2);
+                s.topDayDate = parts[0];
+                try {
+                    s.topDayCount = Integer.parseInt(parts[1]);
+                } catch (NumberFormatException ignored) {
+                }
+            }
+            s.totalChars = noteDao.sumTextLength();
+            s.avgChars = s.active == 0 ? 0 : s.totalChars / s.active;
+            LongestNote ln = noteDao.longestNote();
+            if (ln != null) {
+                s.longestTitle = (ln.title == null || ln.title.trim().isEmpty())
+                        ? "(tanpa judul)" : ln.title.trim();
+                s.longestLen = ln.len;
+            }
+            s.withReminder = noteDao.countWithReminder();
+            s.locked = noteDao.countLocked();
+            s.checklist = noteDao.countChecklist();
+            s.withImages = noteDao.countWithImages();
+            try {
+                List<FolderEntity> all = folderDao.getAll();
+                java.util.Map<Long, String> names = new java.util.HashMap<>();
+                for (FolderEntity f : all) names.put(f.id, f.name);
+                for (FolderCount fc : noteDao.countByFolder()) {
+                    String name = names.get(fc.folderId);
+                    if (name == null || name.trim().isEmpty()) name = "Tanpa folder";
+                    s.folders.add(new NoteStats.FolderRow(name, fc.cnt));
+                }
+            } catch (Exception ignored) {
+            }
+            cb.onResult(s);
+        });
     }
 }
