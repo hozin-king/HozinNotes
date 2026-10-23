@@ -11,6 +11,17 @@
     <string name="editor_find_in_note">Cari dalam catatan</string>
     <string name="editor_find_hint">Cari…</string>
     <string name="editor_find_count">%1$d/%2$d</string>
+    <!-- v1.23: cari & ganti -->
+    <string name="editor_replace_toggle_cd">Tampilkan ganti teks</string>
+    <string name="editor_replace_hint">Ganti dengan…</string>
+    <string name="editor_replace_one">Ganti</string>
+    <string name="editor_replace_all">Semua</string>
+    <string name="editor_replaced_count">%1$d diganti</string>
+    <!-- v1.23: riwayat revisi -->
+    <string name="revision_history">Riwayat revisi</string>
+    <string name="revision_empty">Belum ada riwayat revisi untuk catatan ini.</string>
+    <string name="revision_restore">Pulihkan versi ini</string>
+    <string name="revision_restored">Versi catatan dipulihkan</string>
     <string name="editor_word_count">%1$d kata</string>
     <string name="share_received">Diterima dari aplikasi lain</string>
 

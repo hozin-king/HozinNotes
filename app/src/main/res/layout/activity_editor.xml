@@ -188,6 +188,19 @@
             android:textSize="12sp" />
 
         <TextView
+            android:id="@+id/btn_find_replace_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="10dp"
+            android:text="&#8646;"
+            android:contentDescription="@string/editor_replace_toggle_cd"
+            android:textSize="15sp"
+            android:textColor="?attr/colorOnSurface" />
+
+        <TextView
             android:id="@+id/btn_find_prev"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -221,6 +234,59 @@
             android:padding="10dp"
             android:text="✕"
             android:textSize="15sp"
+            android:textColor="?attr/colorOnSurface" />
+    </LinearLayout>
+
+    <!-- v1.23: baris ganti teks (cari & ganti), disembunyikan default -->
+    <LinearLayout
+        android:id="@+id/replace_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="4dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"
+        android:visibility="gone"
+        android:background="?attr/colorSurfaceVariant">
+
+        <EditText
+            android:id="@+id/replace_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@null"
+            android:hint="@string/editor_replace_hint"
+            android:imeOptions="actionDone"
+            android:inputType="text"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnSurface"
+            android:textColorHint="?attr/colorOnSurfaceVariant"
+            android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/btn_replace_one"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="10dp"
+            android:text="@string/editor_replace_one"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurface" />
+
+        <TextView
+            android:id="@+id/btn_replace_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="10dp"
+            android:text="@string/editor_replace_all"
+            android:textSize="14sp"
             android:textColor="?attr/colorOnSurface" />
     </LinearLayout>
 

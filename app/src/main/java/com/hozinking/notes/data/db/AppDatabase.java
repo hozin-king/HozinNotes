@@ -17,8 +17,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
         TagEntity.class,
         NoteTagCrossRef.class,
         NoteFts.class,
-        MoodEntry.class
-}, version = 8, exportSchema = false)
+        MoodEntry.class,
+        NoteRevision.class
+}, version = 9, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase instance;
 
@@ -112,6 +113,27 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract MoodDao moodDao();
 
+    /**
+     * v8 -> v9: tabel riwayat revisi (note_revisions) untuk fitur Riwayat Revisi (v1.23).
+     * Tabel BARU — data lama tidak tersentuh, migrasi aman.
+     */
+    static final Migration MIGRATION_8_9 = new Migration(8, 9) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase db) {
+            db.execSQL("CREATE TABLE IF NOT EXISTS `note_revisions` ("
+                    + "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                    + "`noteId` INTEGER NOT NULL, "
+                    + "`title` TEXT, "
+                    + "`content` TEXT, "
+                    + "`contentHtml` INTEGER NOT NULL, "
+                    + "`savedAt` INTEGER NOT NULL)");
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_note_revisions_noteId` "
+                    + "ON `note_revisions` (`noteId`)");
+        }
+    };
+
+    public abstract RevisionDao revisionDao();
+
     public static AppDatabase get(Context ctx) {
         if (instance == null) {
             synchronized (AppDatabase.class) {
@@ -121,7 +143,7 @@ public abstract class AppDatabase extends RoomDatabase {
                             .setJournalMode(JournalMode.WRITE_AHEAD_LOGGING)
                             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4,
                                     MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
-                                    MIGRATION_7_8)
+                                    MIGRATION_7_8, MIGRATION_8_9)
                             .build();
                 }
             }

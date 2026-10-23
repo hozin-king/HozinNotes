@@ -64,6 +64,7 @@ import com.hozinking.notes.data.db.AudioRefEntity;
 import com.hozinking.notes.data.db.FolderEntity;
 import com.hozinking.notes.data.db.ImageRefEntity;
 import com.hozinking.notes.data.db.NoteEntity;
+import com.hozinking.notes.data.db.NoteRevision;
 import com.hozinking.notes.data.db.TagEntity;
 import com.hozinking.notes.data.repo.NoteRepository;
 import com.hozinking.notes.ui.dialog.IosActionSheet;
@@ -141,6 +142,9 @@ public class EditorActivity extends AppCompatActivity {
     // Cari dalam catatan
     private ScrollView editorScroll;
     private LinearLayout findBar;
+    // v1.23: baris ganti teks (cari & ganti), disembunyikan default.
+    private LinearLayout replaceBar;
+    private EditText replaceInput;
 
     // Sketsa & pratinjau
     private TextView previewContent;
@@ -320,6 +324,13 @@ public class EditorActivity extends AppCompatActivity {
         findViewById(R.id.btn_find_prev).setOnClickListener(v -> findStep(-1));
         findViewById(R.id.btn_find_next).setOnClickListener(v -> findStep(1));
         findViewById(R.id.btn_find_close).setOnClickListener(v -> hideFindBar());
+        // v1.23: cari & ganti.
+        replaceBar = findViewById(R.id.replace_bar);
+        replaceInput = findViewById(R.id.replace_input);
+        findViewById(R.id.btn_find_replace_toggle)
+                .setOnClickListener(v -> toggleReplaceBar());
+        findViewById(R.id.btn_replace_one).setOnClickListener(v -> replaceCurrent());
+        findViewById(R.id.btn_replace_all).setOnClickListener(v -> replaceAll());
         updateWordCount();
 
         noteId = getIntent().getLongExtra("noteId", -1);
@@ -419,10 +430,16 @@ public class EditorActivity extends AppCompatActivity {
                 noteId = id;
                 note.id = id;
                 refreshImages();
+                // v1.23: snapshot revisi pertama.
+                NoteRepository.get(EditorActivity.this).saveRevisionIfChanged(
+                        id, note.title, note.content, note.contentHtml);
             }));
         } else {
             NoteRepository.get(this).updateNote(note, v -> {
             });
+            // v1.23: snapshot revisi bila isi/judul berubah (diabaikan bila sama).
+            NoteRepository.get(this).saveRevisionIfChanged(
+                    noteId, note.title, note.content, note.contentHtml);
         }
     }
 
@@ -1674,6 +1691,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.export_md), this::exportMarkdown)
                 .addItem(getString(R.string.export_html), this::exportHtml)
                 .addItem(getString(R.string.duplicate), this::duplicateNote)
+                .addItem(getString(R.string.revision_history), this::showRevisionHistory)
                 .addItem(getString(R.string.checklist_sort_checked), this::sortCheckedToBottom)
                 .addItem(getString(R.string.checklist_clear_checked), this::clearCheckedItems)
                 .addItem(getString(note.locked ? R.string.note_unlock : R.string.note_lock),
@@ -1820,6 +1838,7 @@ public class EditorActivity extends AppCompatActivity {
 
     private void hideFindBar() {
         findBar.setVisibility(View.GONE);
+        if (replaceBar != null) replaceBar.setVisibility(View.GONE);
         findInput.setText("");
         clearFindHighlights();
     }
@@ -1903,6 +1922,135 @@ public class EditorActivity extends AppCompatActivity {
                     + contentInput.getLayout().getLineTop(line);
             editorScroll.smoothScrollTo(0, Math.max(0, y - 200));
         }
+    }
+
+    // ---------- v1.23: cari & ganti ----------
+
+    private void toggleReplaceBar() {
+        if (replaceBar == null) return;
+        boolean show = replaceBar.getVisibility() != View.VISIBLE;
+        replaceBar.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (show) replaceInput.requestFocus();
+    }
+
+    /** Ganti kemunculan yang sedang disorot, lalu pindah ke hasil berikutnya. */
+    private void replaceCurrent() {
+        if (findMatches.isEmpty() || findIndex < 0 || findIndex >= findMatches.size()
+                || replaceInput == null) {
+            return;
+        }
+        String repl = replaceInput.getText().toString();
+        Editable e = contentInput.getText();
+        int[] m = findMatches.get(findIndex);
+        int start = m[0];
+        e.replace(m[0], m[1], repl);
+        scheduleSave();
+        runFind();
+        // Pindah ke hasil pertama pada/setelah posisi penggantian.
+        int next = start + repl.length();
+        for (int i = 0; i < findMatches.size(); i++) {
+            if (findMatches.get(i)[0] >= next) {
+                findIndex = i;
+                paintFindMatches();
+                return;
+            }
+        }
+    }
+
+    /** Ganti semua kemunculan (dari belakang agar indeks tetap valid). */
+    private void replaceAll() {
+        if (findMatches.isEmpty() || replaceInput == null) return;
+        String repl = replaceInput.getText().toString();
+        Editable e = contentInput.getText();
+        int count = 0;
+        for (int i = findMatches.size() - 1; i >= 0; i--) {
+            int[] m = findMatches.get(i);
+            e.replace(m[0], m[1], repl);
+            count++;
+        }
+        scheduleSave();
+        runFind();
+        Toast.makeText(this, getString(R.string.editor_replaced_count, count),
+                Toast.LENGTH_SHORT).show();
+    }
+
+    // ---------- v1.23: riwayat revisi ----------
+
+    private static final java.text.SimpleDateFormat REVISION_FMT =
+            new java.text.SimpleDateFormat("d MMM yyyy, HH:mm", new Locale("id", "ID"));
+
+    /** Tampilkan daftar revisi (terbaru dulu) sebagai action sheet. */
+    private void showRevisionHistory() {
+        if (note == null) return;
+        withNoteId(id -> NoteRepository.get(this).listRevisions(id,
+                list -> main.post(() -> showRevisionList(list))));
+    }
+
+    private void showRevisionList(List<NoteRevision> list) {
+        if (list == null || list.isEmpty()) {
+            Toast.makeText(this, R.string.revision_empty, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        IosActionSheet sheet = new IosActionSheet(this)
+                .setTitle(getString(R.string.revision_history));
+        int shown = Math.min(list.size(), REVISION_LIST_SHOWN);
+        for (int i = 0; i < shown; i++) {
+            final NoteRevision r = list.get(i);
+            String label = REVISION_FMT.format(new java.util.Date(r.savedAt))
+                    + " — " + previewOf(r);
+            sheet.addItem(label, () -> showRevisionDetail(r));
+        }
+        sheet.show();
+    }
+
+    /** Jumlah entri riwayat yang ditampilkan di daftar (DAO menyimpan 20). */
+    private static final int REVISION_LIST_SHOWN = 20;
+
+    /** Cuplikan isi revisi untuk daftar (maks ~60 karakter, tanpa tag HTML). */
+    private static String previewOf(NoteRevision r) {
+        String t = r.title == null ? "" : r.title.trim();
+        if (!t.isEmpty()) return t.length() > 60 ? t.substring(0, 60) + "…" : t;
+        String c = r.content == null ? "" : r.content;
+        if (r.contentHtml) c = c.replaceAll("<[^>]*>", " ");
+        c = c.replaceAll("\\s+", " ").trim();
+        if (c.isEmpty()) return "—";
+        return c.length() > 60 ? c.substring(0, 60) + "…" : c;
+    }
+
+    /** Pratinjau satu revisi + tombol pulihkan. */
+    private void showRevisionDetail(NoteRevision r) {
+        String body = r.content == null ? "" : r.content;
+        if (r.contentHtml) body = body.replaceAll("<[^>]*>", "");
+        String title = r.title == null ? "" : r.title.trim();
+        String msg = REVISION_FMT.format(new java.util.Date(r.savedAt))
+                + (title.isEmpty() ? "" : "\n\n" + title)
+                + "\n\n" + body.trim();
+        if (msg.length() > 2000) msg = msg.substring(0, 2000) + "…";
+        new IosDialog(this)
+                .setTitle(getString(R.string.revision_history))
+                .setMessage(msg)
+                .setPositive(getString(R.string.revision_restore),
+                        () -> restoreRevision(r))
+                .setNegative(getString(R.string.cancel), null)
+                .show();
+    }
+
+    /**
+     * Pulihkan judul+isi dari revisi. Hasil pulihan otomatis jadi revisi baru
+     * lewat saveNow(), jadi pemulihan bisa diurungkan via riwayat.
+     */
+    private void restoreRevision(NoteRevision r) {
+        if (note == null) return;
+        saveHandler.removeCallbacks(saveRunnable);
+        note.title = r.title == null ? "" : r.title;
+        note.content = r.content == null ? "" : r.content;
+        note.contentHtml = r.contentHtml;
+        titleInput.setText(note.title);
+        setContentFromNote(note);
+        undoRedo.clear();
+        updateUndoRedoButtons();
+        saveNow();
+        Toast.makeText(this, R.string.revision_restored, Toast.LENGTH_SHORT).show();
     }
 
     // ---------- penghitung kata ----------

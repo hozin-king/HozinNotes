@@ -76,8 +76,11 @@ public class NoteRepository {
     private final FolderDao folderDao;
     private final TagDao tagDao;
     private final MoodDao moodDao;
+    private final RevisionDao revisionDao;
     private VaultDao vaultDao;
     private final ExecutorService io = Executors.newFixedThreadPool(4);
+    /** Executor serial khusus revisi agar snapshot beruntun tidak balapan. */
+    private final ExecutorService revIo = Executors.newSingleThreadExecutor();
 
     private NoteRepository(Context ctx) {
         appCtx = ctx.getApplicationContext();
@@ -89,6 +92,7 @@ public class NoteRepository {
         folderDao = db.folderDao();
         tagDao = db.tagDao();
         moodDao = db.moodDao();
+        revisionDao = db.revisionDao();
         vaultDao = VaultDatabase.get(appCtx).vaultDao();
     }
 
@@ -126,6 +130,50 @@ public class NoteRepository {
 
     public void getNote(long id, Cb<NoteEntity> cb) {
         io.execute(() -> cb.onResult(noteDao.getById(id)));
+    }
+
+    // ------------------------------------------------------- riwayat revisi
+
+    /**
+     * v1.23: simpan snapshot revisi bila judul/isi berbeda dari revisi terakhir.
+     * Dipanggil tiap penyimpanan otomatis; duplikat beruntun tidak disimpan.
+     */
+    public void saveRevisionIfChanged(long noteId, String title, String content,
+                                      boolean contentHtml) {
+        final String t = title == null ? "" : title;
+        final String c = content == null ? "" : content;
+        if (t.trim().isEmpty() && c.trim().isEmpty()) return; // jangan arsipkan kosong
+        revIo.execute(() -> {
+            try {
+                NoteRevision latest = revisionDao.latestForNote(noteId);
+                String lt = latest == null || latest.title == null ? "" : latest.title;
+                String lc = latest == null || latest.content == null ? "" : latest.content;
+                if (t.equals(lt) && c.equals(lc)
+                        && (latest == null || latest.contentHtml == contentHtml)) {
+                    return; // tidak berubah -> bukan revisi baru
+                }
+                NoteRevision r = new NoteRevision();
+                r.noteId = noteId;
+                r.title = t;
+                r.content = c;
+                r.contentHtml = contentHtml;
+                r.savedAt = System.currentTimeMillis();
+                revisionDao.insert(r);
+                revisionDao.prune(noteId, RevisionDao.MAX_KEPT);
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    /** Daftar revisi satu catatan, terbaru dulu (untuk dialog riwayat). */
+    public void listRevisions(long noteId, Cb<List<NoteRevision>> cb) {
+        io.execute(() -> {
+            try {
+                cb.onResult(revisionDao.forNote(noteId));
+            } catch (Exception e) {
+                cb.onResult(new java.util.ArrayList<>());
+            }
+        });
     }
 
     /** Semua catatan (isi penuh) untuk kebutuhan backup — bukan paging. */
@@ -320,6 +368,7 @@ public class NoteRepository {
                 deleteFileQuiet(a.encPath);
             }
             audioDao.deleteForNote(id);
+            revisionDao.deleteForNote(id);
             noteDao.deleteForever(id);
             PinnedNoteManager.unpinIfPinned(appCtx, id);
             cb.onResult(null);
@@ -341,6 +390,7 @@ public class NoteRepository {
             noteDao.clearAll();
             imageDao.clearAll();
             audioDao.clearAll();
+            revisionDao.clearAll();
             folderDao.clearAll();
             tagDao.clearAll();
             cb.onResult(null);
