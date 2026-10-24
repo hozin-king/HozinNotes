@@ -358,14 +358,31 @@ public class NoteListFragment extends Fragment {
     private void applyLayoutManager() {
         RecyclerView.LayoutManager lm;
         if (isGridMode()) {
+            // v1.24: jumlah kolom menyesuaikan lebar layar (konsep "multi-column
+            // layout optimized for screen size" ala vishesh/sealnote, MIT —
+            // implementasi sendiri): ponsel potret 2, tablet/landscape 3-4.
             StaggeredGridLayoutManager sglm =
-                    new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL);
+                    new StaggeredGridLayoutManager(gridSpan(), StaggeredGridLayoutManager.VERTICAL);
             sglm.setGapStrategy(StaggeredGridLayoutManager.GAP_HANDLING_MOVE_ITEMS_BETWEEN_SPANS);
             lm = sglm;
         } else {
             lm = new LinearLayoutManager(requireContext());
         }
         recycler.setLayoutManager(lm);
+    }
+
+    private int gridSpan() {
+        try {
+            float density = requireContext().getResources().getDisplayMetrics().density;
+            if (density <= 0) return 2;
+            int widthDp = (int) (requireContext().getResources()
+                    .getDisplayMetrics().widthPixels / density);
+            if (widthDp >= 900) return 4;
+            if (widthDp >= 600) return 3;
+            return 2;
+        } catch (Exception e) {
+            return 2;
+        }
     }
 
     private void toggleViewMode() {

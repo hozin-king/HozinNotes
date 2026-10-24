@@ -184,4 +184,11 @@
     <!-- v1.20: biometrik untuk catatan terkunci -->
     <string name="lock_biometric_sub">Verifikasi sidik jari / wajah untuk membuka</string>
     <string name="lock_use_pin">Pakai PIN</string>
+
+    <!-- v1.24: masa tenggang kunci ulang -->
+    <string name="settings_lock_timeout">Kunci ulang catatan terkunci setelah tidak dibuka selama</string>
+    <string name="lock_timeout_now">Setiap dibuka (langsung)</string>
+    <string name="lock_timeout_1">1 menit</string>
+    <string name="lock_timeout_5">5 menit</string>
+    <string name="lock_timeout_15">15 menit</string>
 </resources>

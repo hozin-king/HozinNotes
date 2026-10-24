@@ -202,6 +202,23 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
 
+        // ---------- v1.24: masa tenggang kunci ulang catatan terkunci ----------
+        updateLockTimeoutLabel();
+        findViewById(R.id.row_lock_timeout).setOnClickListener(v -> {
+            int cur = NoteLockGate.graceMinutes(this);
+            new IosActionSheet(this)
+                    .setTitle(getString(R.string.settings_lock_timeout))
+                    .addItem((cur == 0 ? "✓ " : "") + getString(R.string.lock_timeout_now),
+                            () -> setLockTimeout(0))
+                    .addItem((cur == 1 ? "✓ " : "") + getString(R.string.lock_timeout_1),
+                            () -> setLockTimeout(1))
+                    .addItem((cur == 5 ? "✓ " : "") + getString(R.string.lock_timeout_5),
+                            () -> setLockTimeout(5))
+                    .addItem((cur == 15 ? "✓ " : "") + getString(R.string.lock_timeout_15),
+                            () -> setLockTimeout(15))
+                    .show();
+        });
+
         // ---------- PIN kamuflase Ruang Privat ----------
         findViewById(R.id.btn_decoy_pin).setOnClickListener(v -> {
             if (!VaultPinActivity.isPinSet(this)) {
@@ -412,6 +429,28 @@ public class SettingsActivity extends AppCompatActivity {
     private void applyFontSize(String sp, TextView btnFontSize) {
         prefs.edit().putString(KEY_FONT_SIZE, sp).apply();
         btnFontSize.setText(fontSizeLabel(sp));
+    }
+
+    /** v1.24: label masa tenggang kunci ulang (Segera/1/5/15 menit). */
+    private String lockTimeoutLabel(int minutes) {
+        switch (minutes) {
+            case 1: return getString(R.string.lock_timeout_1);
+            case 5: return getString(R.string.lock_timeout_5);
+            case 15: return getString(R.string.lock_timeout_15);
+            default: return getString(R.string.lock_timeout_now);
+        }
+    }
+
+    private void updateLockTimeoutLabel() {
+        TextView tv = findViewById(R.id.tv_lock_timeout);
+        if (tv != null) {
+            tv.setText(lockTimeoutLabel(NoteLockGate.graceMinutes(this)));
+        }
+    }
+
+    private void setLockTimeout(int minutes) {
+        NoteLockGate.setGraceMinutes(this, minutes);
+        updateLockTimeoutLabel();
     }
 
     /** Dipanggil dari Application.onCreate agar tema tersimpan diterapkan saat start. */
