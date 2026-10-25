@@ -1197,6 +1197,21 @@ public class NoteRepository {
                 }
             } catch (Exception ignored) {
             }
+            // v1.25: kenangan hari ini + pengingat terdekat (read-only).
+            try {
+                java.util.Calendar cal = java.util.Calendar.getInstance();
+                String monthDay = String.format(java.util.Locale.US, "%02d-%02d",
+                        cal.get(java.util.Calendar.MONTH) + 1,
+                        cal.get(java.util.Calendar.DAY_OF_MONTH));
+                String year = String.valueOf(cal.get(java.util.Calendar.YEAR));
+                List<NoteEntity> mem = noteDao.onThisDay(monthDay, year);
+                if (mem != null) s.onThisDay.addAll(mem);
+            } catch (Exception ignored) {
+            }
+            try {
+                s.nextReminder = noteDao.nextReminder(System.currentTimeMillis());
+            } catch (Exception ignored) {
+            }
             cb.onResult(s);
         });
     }

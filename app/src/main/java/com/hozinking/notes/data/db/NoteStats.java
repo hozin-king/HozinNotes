@@ -36,4 +36,10 @@ public class NoteStats {
     }
 
     public final List<FolderRow> folders = new ArrayList<>();
+
+    /** v1.25: catatan yang dibuat pada tanggal-bulan hari ini di tahun sebelumnya. */
+    public final List<NoteEntity> onThisDay = new ArrayList<>();
+
+    /** v1.25: pengingat aktif terdekat, atau null bila tidak ada. */
+    public NoteEntity nextReminder;
 }

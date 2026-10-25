@@ -269,6 +269,17 @@
     <string name="usage_notes_count">%1$s catatan</string>
     <string name="usage_none">–</string>
 
+    <!-- v1.25: pengingat terdekat & kenangan hari ini -->
+    <string name="usage_section_memories">Kenangan hari ini</string>
+    <string name="usage_next_reminder">Pengingat terdekat</string>
+    <string name="usage_next_reminder_value">%1$s • %2$s</string>
+    <string name="usage_reminder_today">hari ini</string>
+    <string name="usage_reminder_tomorrow">besok</string>
+    <string name="usage_reminder_in_days">dalam %1$d hari</string>
+    <string name="usage_memories_empty">Belum ada catatan dari tanggal ini di tahun sebelumnya.</string>
+    <string name="usage_memory_year_ago">tahun lalu</string>
+    <string name="usage_memory_years_ago">%1$d tahun lalu</string>
+
     <!-- v1.22: kecerahan layar di mode pratinjau -->
     <string name="preview_brightness">Kecerahan layar</string>
     <string name="preview_brightness_pct">%1$d%%</string>

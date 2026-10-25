@@ -100,6 +100,10 @@
             android:id="@+id/stats_row_images"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
+        <include layout="@layout/item_stat_row"
+            android:id="@+id/stats_row_next_reminder"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
 
         <TextView
             android:layout_width="match_parent"
@@ -111,6 +115,20 @@
 
         <LinearLayout
             android:id="@+id/stats_folders"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/usage_section_memories"
+            android:textSize="13sp"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <LinearLayout
+            android:id="@+id/stats_memories"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical" />

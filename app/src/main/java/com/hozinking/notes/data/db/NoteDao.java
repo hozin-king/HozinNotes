@@ -234,4 +234,21 @@ public interface NoteDao {
     @Query("SELECT folderId, COUNT(*) AS cnt FROM notes"
             + " WHERE trashed=0 AND archived=0 GROUP BY folderId ORDER BY cnt DESC")
     List<FolderCount> countByFolder();
+
+    // ---------------- v1.25: kenangan hari ini & pengingat terdekat (read-only) ---
+    /**
+     * v1.25: catatan aktif yang DIBUAT pada tanggal-bulan yang sama dengan hari
+     * ini, tapi di tahun sebelumnya (konsep "that year today" ala jotsy —
+     * ide dipinjam, implementasi sendiri). createdAt dalam milidetik.
+     */
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND archived=0 "
+            + "AND strftime('%m-%d', createdAt/1000,'unixepoch','localtime')=:monthDay "
+            + "AND strftime('%Y', createdAt/1000,'unixepoch','localtime')<:year "
+            + "ORDER BY createdAt DESC LIMIT 10")
+    List<NoteEntity> onThisDay(String monthDay, String year);
+
+    /** v1.25: pengingat aktif terdekat (waktu di masa depan, note tidak di sampah). */
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 "
+            + "AND reminderTime > :now ORDER BY reminderTime ASC LIMIT 1")
+    NoteEntity nextReminder(long now);
 }
