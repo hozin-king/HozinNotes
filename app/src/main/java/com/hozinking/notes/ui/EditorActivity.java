@@ -21,7 +21,9 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.text.method.LinkMovementMethod;
 import android.text.style.BackgroundColorSpan;
+import android.text.style.ClickableSpan;
 import android.text.style.CharacterStyle;
 import android.text.style.ParagraphStyle;
 import android.text.style.RelativeSizeSpan;
@@ -1761,20 +1763,7 @@ public class EditorActivity extends AppCompatActivity {
         if (previewMode) {
             saveNow(); // flush perubahan yang masih tertunda
             clearFindHighlights();
-            SpannableStringBuilder sb = new SpannableStringBuilder();
-            String t = titleInput.getText().toString().trim();
-            if (!t.isEmpty()) {
-                int s = sb.length();
-                sb.append(t);
-                sb.setSpan(new StyleSpan(Typeface.BOLD), s, sb.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                sb.setSpan(new RelativeSizeSpan(1.25f), s, sb.length(),
-                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-                sb.append("\n\n");
-            }
-            sb.append(contentInput.getText());
-            previewContent.setText(sb);
-            previewContent.setMovementMethod(LinkTouchMovementMethod.getInstance());
+            renderPreview();
             titleInput.setVisibility(View.GONE);
             titleDivider.setVisibility(View.GONE);
             contentInput.setVisibility(View.GONE);
@@ -1807,6 +1796,118 @@ public class EditorActivity extends AppCompatActivity {
             // v1.22: keluar mode baca → kembalikan kecerahan sistem.
             if (previewBrightnessRow != null) previewBrightnessRow.setVisibility(View.GONE);
             applyPreviewBrightness(BRIGHTNESS_SYSTEM);
+        }
+    }
+
+    /**
+     * v1.26: bangun isi pratinjau (dipanggil saat masuk mode pratinjau DAN
+     * setiap kali kotak checklist di pratinjau diketuk, agar tampilan tetap
+     * di mode baca). Judul tebal + isi; baris checklist dirender sebagai
+     * "☐ "/"☑ " dengan kotak yang BISA DIKETUK (konsep checklist inline
+     * ala Elite Memo Pro, MIT — ide dipinjam, implementasi sendiri), dan
+     * item yang sudah dicentang tampil tercoret. Link tetap bisa di-tap
+     * lewat LinkMovementMethod (TextView read-only, jadi tidak ada masalah
+     * kursor seperti di EditText).
+     */
+    private void renderPreview() {
+        SpannableStringBuilder sb = new SpannableStringBuilder();
+        String t = titleInput.getText().toString().trim();
+        if (!t.isEmpty()) {
+            int s = sb.length();
+            sb.append(t);
+            sb.setSpan(new StyleSpan(Typeface.BOLD), s, sb.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            sb.setSpan(new RelativeSizeSpan(1.25f), s, sb.length(),
+                    Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            sb.append("\n\n");
+        }
+        int contentStart = sb.length();
+        String source = contentInput.getText().toString();
+        sb.append(contentInput.getText());
+        decoratePreviewChecklist(sb, source, contentStart);
+        previewContent.setText(sb);
+        previewContent.setMovementMethod(LinkMovementMethod.getInstance());
+    }
+
+    /**
+     * v1.26: ganti penanda "- [ ] "/"- [x] " di salinan pratinjau dengan
+     * kotak ketuk + coret untuk item selesai. Offset sumber (di
+     * contentInput) dicatat per baris SEBELUM penggantian, jadi ketukan
+     * selalu mengubah baris yang benar meski panjang baris di pratinjau
+     * menyusut 4 karakter per item.
+     */
+    private void decoratePreviewChecklist(SpannableStringBuilder sb,
+            String source, int contentStart) {
+        int srcPos = 0;
+        int sbPos = contentStart;
+        while (srcPos <= source.length()) {
+            int srcNl = source.indexOf('\n', srcPos);
+            int srcEnd = srcNl < 0 ? source.length() : srcNl;
+            String line = source.substring(srcPos, srcEnd);
+            int indent = firstNonSpace(line);
+            String marker = indent < line.length() ? line.substring(indent) : "";
+            boolean isOpen = marker.startsWith("- [ ]");
+            boolean isDone = marker.startsWith("- [x]") || marker.startsWith("- [X]");
+            if (isOpen || isDone) {
+                int replacedLen = Math.min(6, line.length() - indent);
+                sb.replace(sbPos + indent, sbPos + indent + replacedLen,
+                        isDone ? "☑ " : "☐ ");
+                sb.setSpan(new PreviewCheckSpan(srcPos, srcEnd),
+                        sbPos + indent, sbPos + indent + 1,
+                        Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                if (isDone) {
+                    int itemEnd = sbPos + line.length() - (replacedLen - 2);
+                    if (itemEnd > sbPos + indent + 2) {
+                        sb.setSpan(new StrikethroughSpan(),
+                                sbPos + indent + 2, itemEnd,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                }
+                sbPos += line.length() - (replacedLen - 2);
+            } else {
+                sbPos += line.length();
+            }
+            if (srcNl < 0) break;
+            srcPos = srcNl + 1;
+            sbPos += 1; // karakter '\n' yang sama di pratinjau
+        }
+    }
+
+    /** Span kotak checklist di pratinjau: ketuk untuk mencentang/membuka. */
+    private class PreviewCheckSpan extends ClickableSpan {
+        private final int srcStart;
+        private final int srcEnd;
+
+        PreviewCheckSpan(int srcStart, int srcEnd) {
+            this.srcStart = srcStart;
+            this.srcEnd = srcEnd;
+        }
+
+        @Override
+        public void onClick(View widget) {
+            Editable ed = contentInput.getText();
+            if (srcStart < 0 || srcStart >= ed.length()) return;
+            int end = Math.min(srcEnd, ed.length());
+            String line = ed.subSequence(srcStart, end).toString();
+            int ind = firstNonSpace(line);
+            String m = ind < line.length() ? line.substring(ind) : "";
+            boolean isOpen = m.startsWith("- [ ]");
+            boolean isDone = m.startsWith("- [x]") || m.startsWith("- [X]");
+            if (!isOpen && !isDone) return;
+            int markerLen = Math.min(6, line.length() - ind);
+            String rest = line.length() > ind + markerLen
+                    ? line.substring(ind + markerLen) : "";
+            String next = line.substring(0, ind)
+                    + (isOpen ? "- [x] " : "- [ ] ") + rest;
+            ed.replace(srcStart, end, next);
+            scheduleSave();
+            renderPreview(); // tetap di mode pratinjau, tampilan diperbarui
+        }
+
+        @Override
+        public void updateDrawState(android.text.TextPaint ds) {
+            super.updateDrawState(ds);
+            ds.setUnderlineText(false); // kotak bukan tautan: tanpa garis bawah
         }
     }
 
