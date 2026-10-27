@@ -1684,6 +1684,7 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.table_insert), this::showInsertTableDialog)
                 .addItem(getString(R.string.editor_find_in_note), this::showFindBar)
                 .addItem(getString(R.string.editor_insert_datetime), this::insertDateTime)
+                .addItem(getString(R.string.editor_insert_link), this::showInsertNoteLink)
                 .addItem(getString(speaker != null && speaker.isSpeaking()
                                 ? R.string.editor_stop_reading : R.string.editor_read_aloud),
                         this::toggleReadAloud)
@@ -1825,6 +1826,7 @@ public class EditorActivity extends AppCompatActivity {
         String source = contentInput.getText().toString();
         sb.append(contentInput.getText());
         decoratePreviewChecklist(sb, source, contentStart);
+        decoratePreviewBacklinks(sb, source, contentStart);
         previewContent.setText(sb);
         previewContent.setMovementMethod(LinkMovementMethod.getInstance());
     }
@@ -1909,6 +1911,116 @@ public class EditorActivity extends AppCompatActivity {
             super.updateDrawState(ds);
             ds.setUnderlineText(false); // kotak bukan tautan: tanpa garis bawah
         }
+    }
+
+    /**
+     * v1.27: tautan internal [[Judul Catatan]] di pratinjau (konsep backlink
+     * ala TidGi-Mobile, ide dipinjam, implementasi sendiri). Berjalan kaki
+     * per baris seperti v1.26 dan memakai pemetaan posisi yang sama, karena
+     * baris checklist di pratinjau memendek: penanda 6 karakter diganti
+     * kotak 2 karakter. Tautan di judul tidak didukung (judul dirender
+     * terpisah, bukan dari isi).
+     */
+    private void decoratePreviewBacklinks(SpannableStringBuilder sb,
+            String source, int contentStart) {
+        int srcPos = 0;
+        int sbPos = contentStart;
+        while (srcPos <= source.length()) {
+            int srcNl = source.indexOf('\n', srcPos);
+            int srcEnd = srcNl < 0 ? source.length() : srcNl;
+            String line = source.substring(srcPos, srcEnd);
+            int indent = firstNonSpace(line);
+            String marker = indent < line.length() ? line.substring(indent) : "";
+            boolean isCheck = marker.startsWith("- [ ]")
+                    || marker.startsWith("- [x]") || marker.startsWith("- [X]");
+            int replacedLen = isCheck ? Math.min(6, line.length() - indent) : 0;
+            int shift = isCheck ? replacedLen - 2 : 0;
+            int from = 0;
+            while (true) {
+                int open = line.indexOf("[[", from);
+                if (open < 0) break;
+                int close = line.indexOf("]]", open + 2);
+                if (close < 0) break;
+                String title = line.substring(open + 2, close).trim();
+                if (!title.isEmpty()) {
+                    int sbStart = sbPos + mapPreviewPos(open, indent, replacedLen);
+                    int sbEnd = sbPos + mapPreviewPos(close + 2, indent, replacedLen);
+                    if (sbStart >= contentStart && sbEnd > sbStart
+                            && sbEnd <= sb.length()) {
+                        sb.setSpan(new PreviewLinkSpan(title), sbStart, sbEnd,
+                                Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                }
+                from = close + 2;
+            }
+            sbPos += line.length() - shift;
+            if (srcNl < 0) break;
+            srcPos = srcNl + 1;
+            sbPos += 1; // karakter '\n' yang sama di pratinjau
+        }
+    }
+
+    /** Petakan posisi dalam satu baris sumber ke posisi pratinjau (v1.26). */
+    private static int mapPreviewPos(int p, int indent, int replacedLen) {
+        if (replacedLen == 0) return p;
+        if (p <= indent) return p;
+        if (p < indent + replacedLen) return indent; // di dalam penanda
+        return p - (replacedLen - 2);
+    }
+
+    /** Span tautan internal di pratinjau: ketuk untuk membuka catatan tujuan. */
+    private class PreviewLinkSpan extends ClickableSpan {
+        private final String title;
+
+        PreviewLinkSpan(String title) {
+            this.title = title;
+        }
+
+        @Override
+        public void onClick(View widget) {
+            NoteRepository.get(EditorActivity.this).findByExactTitle(title, noteId,
+                    n -> main.post(() -> {
+                        if (n == null) {
+                            Toast.makeText(EditorActivity.this,
+                                    getString(R.string.editor_link_not_found, title),
+                                    Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        Intent i = new Intent(EditorActivity.this,
+                                EditorActivity.class);
+                        i.putExtra("noteId", n.id);
+                        startActivity(i);
+                    }));
+        }
+
+        @Override
+        public void updateDrawState(android.text.TextPaint ds) {
+            super.updateDrawState(ds);
+            ds.setUnderlineText(true); // tautan: bergaris bawah seperti biasa
+        }
+    }
+
+    /** v1.27: sisipkan "[[Judul]]" di posisi kursor dari menu editor. */
+    private void showInsertNoteLink() {
+        if (previewMode) togglePreview();
+        if (note == null) return;
+        final EditText input = new EditText(this);
+        input.setHint(R.string.editor_insert_link_hint);
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        input.setPadding(pad, pad, pad, pad);
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.editor_insert_link_title)
+                .setView(input)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    String title = input.getText().toString().trim();
+                    if (title.isEmpty()) return;
+                    int pos = Math.max(contentInput.getSelectionStart(), 0);
+                    contentInput.getText().insert(pos, "[[" + title + "]]");
+                    scheduleSave();
+                    updateWordCount();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     /**
@@ -2160,7 +2272,9 @@ public class EditorActivity extends AppCompatActivity {
         if (wordCountView == null) return;
         String t = contentInput.getText().toString().trim();
         int words = t.isEmpty() ? 0 : t.split("\\s+").length;
-        wordCountView.setText(getString(R.string.editor_word_count, words));
+        // v1.27: estimasi waktu baca (±200 kata/menit, minimal 1 menit).
+        int minutes = words == 0 ? 0 : Math.max(1, (words + 199) / 200);
+        wordCountView.setText(getString(R.string.editor_word_count, words, minutes));
     }
 
     // ---------- terima share dari aplikasi lain ----------

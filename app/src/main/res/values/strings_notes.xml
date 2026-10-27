@@ -22,7 +22,7 @@
     <string name="revision_empty">Belum ada riwayat revisi untuk catatan ini.</string>
     <string name="revision_restore">Pulihkan versi ini</string>
     <string name="revision_restored">Versi catatan dipulihkan</string>
-    <string name="editor_word_count">%1$d kata</string>
+    <string name="editor_word_count">%1$d kata · ±%2$d mnt baca</string>
     <string name="share_received">Diterima dari aplikasi lain</string>
 
     <!-- Content descriptions -->
@@ -159,6 +159,10 @@
 
     <!-- Sisip tanggal &amp; waktu -->
     <string name="editor_insert_datetime">Sisipkan tanggal &amp; waktu</string>
+    <string name="editor_insert_link">Sisipkan tautan catatan</string>
+    <string name="editor_insert_link_title">Tautkan ke catatan</string>
+    <string name="editor_insert_link_hint">Judul catatan tujuan…</string>
+    <string name="editor_link_not_found">Catatan “%1$s” tidak ditemukan</string>
     <!-- v1.17: bacakan catatan (TTS) -->
     <string name="editor_read_aloud">Bacakan catatan</string>
     <string name="editor_stop_reading">Berhenti dibacakan</string>

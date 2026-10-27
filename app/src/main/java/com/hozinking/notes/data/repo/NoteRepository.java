@@ -134,6 +134,11 @@ public class NoteRepository {
         io.execute(() -> cb.onResult(noteDao.getById(id)));
     }
 
+    /** v1.27: cari catatan tujuan tautan internal [[Judul]] (judul persis). */
+    public void findByExactTitle(String title, long excludeId, Cb<NoteEntity> cb) {
+        io.execute(() -> cb.onResult(noteDao.findByExactTitle(title, excludeId)));
+    }
+
     // ------------------------------------------------------- riwayat revisi
 
     /**

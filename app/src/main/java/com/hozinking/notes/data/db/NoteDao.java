@@ -160,6 +160,15 @@ public interface NoteDao {
     @Query("SELECT * FROM notes WHERE id=:id LIMIT 1")
     NoteEntity getById(long id);
 
+    /**
+     * v1.27: cari catatan berdasarkan judul persis (tidak peka huruf besar/
+     * kecil) untuk tautan internal [[Judul]] di pratinjau. Catatan sampah
+     * dikecualikan; catatan saat ini dikecualikan oleh pemanggil.
+     */
+    @Query("SELECT " + PROJECTION + " FROM notes WHERE trashed=0 AND id<>:excludeId "
+            + "AND title COLLATE NOCASE = :title ORDER BY updatedAt DESC LIMIT 1")
+    NoteEntity findByExactTitle(String title, long excludeId);
+
     @Insert
     long insert(NoteEntity n);
 
