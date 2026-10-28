@@ -2,6 +2,8 @@ package com.hozinking.notes.ui;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -510,6 +512,24 @@ public class EditorActivity extends AppCompatActivity {
         String prefix = (pos > 0 && e.charAt(pos - 1) != '\n') ? "\n" : "";
         e.insert(pos, prefix + stamp);
         scheduleSave();
+    }
+
+    /**
+     * v1.28: sisipkan garis pemisah "---" sebagai barisnya sendiri di
+     * posisi kursor (pola yang sama dengan insertDateTime). Bila kursor
+     * di tengah baris, baris itu dibelah: pemisah di baris sendiri,
+     * sisa teks pindah ke baris berikutnya; kursor berakhir di baris
+     * kosong di bawah pemisah sehingga pengetikan bisa langsung lanjut.
+     */
+    private void insertSeparator() {
+        if (previewMode) togglePreview();
+        if (note == null) return;
+        int pos = Math.max(contentInput.getSelectionStart(), 0);
+        Editable e = contentInput.getText();
+        String prefix = (pos > 0 && e.charAt(pos - 1) != '\n') ? "\n" : "";
+        e.insert(pos, prefix + "---\n");
+        scheduleSave();
+        updateWordCount();
     }
 
     private void toggleChecklist() {
@@ -1685,9 +1705,11 @@ public class EditorActivity extends AppCompatActivity {
                 .addItem(getString(R.string.editor_find_in_note), this::showFindBar)
                 .addItem(getString(R.string.editor_insert_datetime), this::insertDateTime)
                 .addItem(getString(R.string.editor_insert_link), this::showInsertNoteLink)
+                .addItem(getString(R.string.editor_insert_separator), this::insertSeparator)
                 .addItem(getString(speaker != null && speaker.isSpeaking()
                                 ? R.string.editor_stop_reading : R.string.editor_read_aloud),
                         this::toggleReadAloud)
+                .addItem(getString(R.string.editor_copy_note), this::copyNote)
                 .addItem(getString(R.string.share), this::shareNote)
                 .addItem(getString(R.string.share_as_image), this::shareAsImage)
                 .addItem(getString(R.string.export_pdf), this::exportPdf)
@@ -2320,6 +2342,42 @@ public class EditorActivity extends AppCompatActivity {
     }
 
     // ---------- Bagikan & duplikat ----------
+
+    /**
+     * v1.28: salin judul + isi catatan (teks polos, penanda checklist
+     * dibuang seperti di bacakan/TTS) ke clipboard, tanpa membuka
+     * chooser bagikan. Sengaja TIDAK dihapus otomatis seperti salinan
+     * sandi di PasswordVault: catatan memang dimaksudkan untuk ditempel
+     * belakangan (mis. ke WhatsApp). Bekerja dari field editor, jadi
+     * draf yang belum tersimpan pun bisa disalin.
+     */
+    private void copyNote() {
+        String raw = contentInput.getText().toString();
+        String plain;
+        if (note != null && note.contentHtml) {
+            try {
+                plain = android.text.Html.fromHtml(raw,
+                        android.text.Html.FROM_HTML_MODE_LEGACY).toString();
+            } catch (Exception e) {
+                plain = raw;
+            }
+        } else {
+            plain = raw;
+        }
+        plain = plain.replaceAll("(?m)^\\s*- \\[[ xX]\\]\\s?", "").trim();
+        String title = displayTitle();
+        String text = plain.isEmpty() ? title : title + "\n\n" + plain;
+        try {
+            ClipboardManager cm = (ClipboardManager)
+                    getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm == null) return;
+            cm.setPrimaryClip(ClipData.newPlainText(title, text));
+            Toast.makeText(this, R.string.editor_note_copied,
+                    Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            // Clipboard gagal: jangan tampilkan toast "disalin" yang salah.
+        }
+    }
 
     /** Bagikan judul + isi catatan sebagai teks polos ke aplikasi lain. */
     private void shareNote() {

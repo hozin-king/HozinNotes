@@ -160,6 +160,10 @@
     <!-- Sisip tanggal &amp; waktu -->
     <string name="editor_insert_datetime">Sisipkan tanggal &amp; waktu</string>
     <string name="editor_insert_link">Sisipkan tautan catatan</string>
+    <!-- v1.28: salin catatan + sisipkan pemisah -->
+    <string name="editor_copy_note">Salin catatan</string>
+    <string name="editor_note_copied">Catatan disalin ke clipboard</string>
+    <string name="editor_insert_separator">Sisipkan pemisah</string>
     <string name="editor_insert_link_title">Tautkan ke catatan</string>
     <string name="editor_insert_link_hint">Judul catatan tujuan…</string>
     <string name="editor_link_not_found">Catatan “%1$s” tidak ditemukan</string>
