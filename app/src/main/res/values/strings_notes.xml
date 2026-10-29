@@ -105,6 +105,11 @@
     <string name="reminder_channel_name">Pengingat</string>
     <string name="reminder_channel_desc">Notifikasi pengingat catatan</string>
     <string name="reminder_repeat_title">Ulangi pengingat</string>
+    <string name="reminder_quick_title">Kapan diingatkan?</string>
+    <string name="reminder_quick_tomorrow_morning">Besok pagi • 08.00</string>
+    <string name="reminder_quick_tonight">Malam ini • 20.00</string>
+    <string name="reminder_quick_next_monday">Senin depan • 09.00</string>
+    <string name="reminder_quick_custom">Pilih tanggal &amp; waktu…</string>
     <string name="reminder_repeat_once">Sekali saja</string>
     <string name="reminder_repeat_daily">Setiap hari</string>
     <string name="reminder_repeat_weekly">Setiap minggu</string>

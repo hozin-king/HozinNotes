@@ -2505,6 +2505,57 @@ public class EditorActivity extends AppCompatActivity {
             requestPermissions(
                     new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 1001);
         }
+        showReminderQuickSheet();
+    }
+
+    /**
+     * v1.29: preset pengingat cepat ala Google Keep — satu ketuk tanpa
+     * melewati pemilih tanggal &amp; jam. Jalur lama tetap tersedia lewat
+     * "Pilih tanggal &amp; waktu…". Preset selalu jatuh di masa depan:
+     * "Malam ini" yang sudah lewat otomatis geser ke besok malam.
+     */
+    private void showReminderQuickSheet() {
+        new IosActionSheet(this)
+                .setTitle(getString(R.string.reminder_quick_title))
+                .addItem(getString(R.string.reminder_quick_tomorrow_morning),
+                        () -> applyReminderPreset(1, 8, 0))
+                .addItem(getString(R.string.reminder_quick_tonight),
+                        () -> applyReminderPreset(0, 20, 0))
+                .addItem(getString(R.string.reminder_quick_next_monday),
+                        this::applyReminderNextMonday)
+                .addItem(getString(R.string.reminder_quick_custom),
+                        this::showReminderPicker)
+                .show();
+    }
+
+    /** Terapkan preset: hari ini + dayOffset pada jam:menit yang diminta. */
+    private void applyReminderPreset(int dayOffset, int hour, int minute) {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        c.add(java.util.Calendar.DAY_OF_YEAR, dayOffset);
+        c.set(java.util.Calendar.HOUR_OF_DAY, hour);
+        c.set(java.util.Calendar.MINUTE, minute);
+        c.set(java.util.Calendar.SECOND, 0);
+        c.set(java.util.Calendar.MILLISECOND, 0);
+        long when = c.getTimeInMillis();
+        if (when <= System.currentTimeMillis()) {
+            c.add(java.util.Calendar.DAY_OF_YEAR, 1);
+            when = c.getTimeInMillis();
+        }
+        warnIfExactAlarmDenied();
+        note.reminderTime = when;
+        showRepeatPicker(when);
+    }
+
+    /** Preset Senin depan pukul 09.00 (bila hari ini Senin, berarti 7 hari lagi). */
+    private void applyReminderNextMonday() {
+        java.util.Calendar c = java.util.Calendar.getInstance();
+        int days = (java.util.Calendar.MONDAY - c.get(java.util.Calendar.DAY_OF_WEEK) + 7) % 7;
+        if (days == 0) days = 7;
+        applyReminderPreset(days, 9, 0);
+    }
+
+    /** Pemilih tanggal &amp; jam manual (jalur lama, kini lewat preset "kustom"). */
+    private void showReminderPicker() {
         java.util.Calendar c = java.util.Calendar.getInstance();
         new android.app.DatePickerDialog(this,
                 (dv, y, m, d) -> new android.app.TimePickerDialog(this,
@@ -2518,17 +2569,7 @@ public class EditorActivity extends AppCompatActivity {
                                         Toast.LENGTH_SHORT).show();
                                 return;
                             }
-                            if (!com.hozinking.notes.reminder.ReminderScheduler
-                                    .canScheduleExact(this)) {
-                                // Arahkan ke Settings sistem untuk izin exact alarm.
-                                try {
-                                    startActivity(com.hozinking.notes.reminder
-                                            .ReminderScheduler.exactAlarmSettingsIntent());
-                                } catch (Exception ignored) {
-                                }
-                                Toast.makeText(this, R.string.reminder_exact_denied,
-                                        Toast.LENGTH_LONG).show();
-                            }
+                            warnIfExactAlarmDenied();
                             note.reminderTime = when;
                             showRepeatPicker(when);
                         },
@@ -2538,6 +2579,20 @@ public class EditorActivity extends AppCompatActivity {
                 c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH),
                 c.get(java.util.Calendar.DAY_OF_MONTH))
                 .show();
+    }
+
+    /** Peringatan izin alarm tepat waktu (dipakai preset & pemilih manual). */
+    private void warnIfExactAlarmDenied() {
+        if (!com.hozinking.notes.reminder.ReminderScheduler.canScheduleExact(this)) {
+            // Arahkan ke Settings sistem untuk izin exact alarm.
+            try {
+                startActivity(com.hozinking.notes.reminder
+                        .ReminderScheduler.exactAlarmSettingsIntent());
+            } catch (Exception ignored) {
+            }
+            Toast.makeText(this, R.string.reminder_exact_denied,
+                    Toast.LENGTH_LONG).show();
+        }
     }
 
     /** Pilih pola ulang pengingat setelah waktu ditentukan. */
